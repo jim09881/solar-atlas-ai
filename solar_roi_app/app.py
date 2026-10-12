@@ -49,28 +49,24 @@ BASE_DIR = Path(__file__).parent.parent
 GDRIVE_FILE_ID = os.environ.get("MODEL_GDRIVE_ID", "")  # ใส่ใน Render env vars
 
 def download_model_from_gdrive(file_id: str, dest: Path) -> bool:
-    """ดาวน์โหลด best.pt จาก Google Drive"""
+    """ดาวน์โหลด best.pt จาก Google Drive ด้วย gdown"""
     if not file_id:
         return False
     try:
-        print(f"⬇️  กำลังดาวน์โหลดโมเดลจาก Google Drive...")
-        url = f"https://drive.google.com/uc?export=download&id={file_id}"
-        session = requests.Session()
-        resp = session.get(url, stream=True, timeout=120)
-        # handle confirm token สำหรับไฟล์ใหญ่
-        for key, val in resp.cookies.items():
-            if "download_warning" in key:
-                url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={val}"
-                resp = session.get(url, stream=True, timeout=120)
-                break
+        import gdown
+        print(f"⬇️  กำลังดาวน์โหลดโมเดลจาก Google Drive (id={file_id})...")
         dest.parent.mkdir(parents=True, exist_ok=True)
-        with open(dest, "wb") as f:
-            for chunk in resp.iter_content(chunk_size=32768):
-                if chunk:
-                    f.write(chunk)
-        size_mb = dest.stat().st_size / 1024 / 1024
-        print(f"✅ ดาวน์โหลดสำเร็จ: {dest} ({size_mb:.1f} MB)")
-        return True
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, str(dest), quiet=False, fuzzy=True)
+        if dest.exists() and dest.stat().st_size > 1024 * 1024:  # > 1MB
+            size_mb = dest.stat().st_size / 1024 / 1024
+            print(f"✅ ดาวน์โหลดสำเร็จ: {dest} ({size_mb:.1f} MB)")
+            return True
+        else:
+            print(f"❌ ไฟล์ที่ดาวน์โหลดมีขนาดเล็กเกินไป — อาจเป็น HTML หรือ empty")
+            if dest.exists():
+                dest.unlink()
+            return False
     except Exception as e:
         print(f"❌ ดาวน์โหลดไม่สำเร็จ: {e}")
         return False
