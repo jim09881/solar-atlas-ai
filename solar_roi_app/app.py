@@ -40,7 +40,7 @@ except ImportError:
 
 app = Flask(__name__)
 
-GEMINI_API_KEY = "AIzaSyAhDrtBElspfrl3yLXE9CpA6vN7Mu1EUv0"
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # Paths for model and image - ตรวจสอบหลายตำแหน่ง
 BASE_DIR = Path(__file__).parent.parent
