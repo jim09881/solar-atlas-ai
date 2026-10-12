@@ -1120,16 +1120,33 @@ async function predictImage() {
     btnPredict.innerHTML = '<i class="fas fa-spinner fa-spin"></i> กำลังตรวจจับ...';
 
     try {
-        const response = await fetch('/api/predict-image', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                latitude: latitude,
-                longitude: longitude
-            })
-        });
+        // Retry logic สำหรับ Render free tier ที่อาจ wake up ช้า
+        let response;
+        let lastError;
+        const maxRetries = 3;
+
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                if (attempt > 1) {
+                    btnPredict.innerHTML = `<i class="fas fa-spinner fa-spin"></i> รอเซิร์ฟเวอร์ตื่น... (${attempt}/${maxRetries})`;
+                    await new Promise(r => setTimeout(r, 3000));
+                }
+                response = await fetch('/api/predict-image', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ latitude, longitude })
+                });
+                // ตรวจว่าได้ JSON จริงๆ ไม่ใช่ HTML
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    throw new Error('Server ยังไม่พร้อม กรุณารอสักครู่...');
+                }
+                break; // สำเร็จ
+            } catch (e) {
+                lastError = e;
+                if (attempt === maxRetries) throw lastError;
+            }
+        }
 
         if (!response.ok) {
             const errorData = await response.json();
