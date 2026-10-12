@@ -52,18 +52,20 @@ def download_model_from_gdrive(file_id: str, dest: Path) -> bool:
     """ดาวน์โหลด best.pt จาก Google Drive ด้วย gdown"""
     if not file_id:
         return False
+    # ตัด /view?usp=sharing ออกถ้าติดมา
+    file_id = file_id.split("/")[0].split("?")[0].strip()
     try:
         import gdown
         print(f"⬇️  กำลังดาวน์โหลดโมเดลจาก Google Drive (id={file_id})...")
         dest.parent.mkdir(parents=True, exist_ok=True)
         url = f"https://drive.google.com/uc?id={file_id}"
-        gdown.download(url, str(dest), quiet=False, fuzzy=True)
+        gdown.download(url, str(dest), quiet=False)
         if dest.exists() and dest.stat().st_size > 1024 * 1024:  # > 1MB
             size_mb = dest.stat().st_size / 1024 / 1024
             print(f"✅ ดาวน์โหลดสำเร็จ: {dest} ({size_mb:.1f} MB)")
             return True
         else:
-            print(f"❌ ไฟล์ที่ดาวน์โหลดมีขนาดเล็กเกินไป — อาจเป็น HTML หรือ empty")
+            print(f"❌ ไฟล์ที่ดาวน์โหลดมีขนาดเล็กเกินไป")
             if dest.exists():
                 dest.unlink()
             return False
