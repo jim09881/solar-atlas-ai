@@ -44,14 +44,44 @@ GEMINI_API_KEY = "AIzaSyAhDrtBElspfrl3yLXE9CpA6vN7Mu1EUv0"
 
 # Paths for model and image - ตรวจสอบหลายตำแหน่ง
 BASE_DIR = Path(__file__).parent.parent
-# ลองหาไฟล์ในหลายตำแหน่ง (รวมถึงชื่อที่มีตัวอักษรพิเศษ)
+
+# ── Auto-download best.pt from Google Drive if not found ──────────────
+GDRIVE_FILE_ID = os.environ.get("MODEL_GDRIVE_ID", "")  # ใส่ใน Render env vars
+
+def download_model_from_gdrive(file_id: str, dest: Path) -> bool:
+    """ดาวน์โหลด best.pt จาก Google Drive"""
+    if not file_id:
+        return False
+    try:
+        print(f"⬇️  กำลังดาวน์โหลดโมเดลจาก Google Drive...")
+        url = f"https://drive.google.com/uc?export=download&id={file_id}"
+        session = requests.Session()
+        resp = session.get(url, stream=True, timeout=120)
+        # handle confirm token สำหรับไฟล์ใหญ่
+        for key, val in resp.cookies.items():
+            if "download_warning" in key:
+                url = f"https://drive.google.com/uc?export=download&id={file_id}&confirm={val}"
+                resp = session.get(url, stream=True, timeout=120)
+                break
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        with open(dest, "wb") as f:
+            for chunk in resp.iter_content(chunk_size=32768):
+                if chunk:
+                    f.write(chunk)
+        size_mb = dest.stat().st_size / 1024 / 1024
+        print(f"✅ ดาวน์โหลดสำเร็จ: {dest} ({size_mb:.1f} MB)")
+        return True
+    except Exception as e:
+        print(f"❌ ดาวน์โหลดไม่สำเร็จ: {e}")
+        return False
+
+# ลองหาไฟล์ในหลายตำแหน่ง
 possible_model_paths = [
-    BASE_DIR / "best.pt",
-    BASE_DIR / "ิbest.pt",  # ชื่อที่มีตัวอักษรพิเศษ
+    Path(__file__).parent / "best.pt",   # solar_roi_app/best.pt
+    BASE_DIR / "best.pt",                # root/best.pt
+    BASE_DIR / "ิbest.pt",
     Path("C:/Users/User/Downloads/stp-solar-roi-backup/best.pt"),
-    Path("C:/Users/User/Downloads/stp-solar-roi-backup/ิbest.pt"),
     Path.home() / "Downloads" / "stp-solar-roi-backup" / "best.pt",
-    Path.home() / "Downloads" / "stp-solar-roi-backup" / "ิbest.pt"
 ]
 possible_image_paths = [
     BASE_DIR / "SSTP.jpg",
@@ -59,12 +89,17 @@ possible_image_paths = [
     Path.home() / "Downloads" / "stp-solar-roi-backup" / "SSTP.jpg"
 ]
 
-# หา path ที่มีไฟล์จริง
+# หา path ที่มีไฟล์จริง — ถ้าไม่พบให้ลอง download จาก GDrive
 MODEL_PATH = None
 for path in possible_model_paths:
     if path.exists():
         MODEL_PATH = path
         break
+
+if MODEL_PATH is None and GDRIVE_FILE_ID:
+    gdrive_dest = Path(__file__).parent / "best.pt"
+    if download_model_from_gdrive(GDRIVE_FILE_ID, gdrive_dest):
+        MODEL_PATH = gdrive_dest
 
 IMAGE_PATH = None
 for path in possible_image_paths:
