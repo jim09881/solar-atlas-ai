@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background Circle -->
+  <circle cx="50" cy="50" r="50" fill="#0066cc"/>
+  <!-- Sun -->
+  <circle cx="50" cy="35" r="18" fill="#FFD700"/>
+  <!-- Solar Panels -->
+  <g fill="#87ceeb" stroke="#ffffff" stroke-width="1">
+    <rect x="30" y="55" width="15" height="15" rx="2"/>
+    <rect x="55" y="55" width="15" height="15" rx="2"/>
+  </g>
+</svg>

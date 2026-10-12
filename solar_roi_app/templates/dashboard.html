@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Analytics Dashboard - Professional Edition</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        solar: {
+                            50: '#fffbeb',
+                            100: '#fef3c7',
+                            200: '#fde68a',
+                            300: '#fcd34d',
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                            700: '#b45309',
+                        },
+                        navy: {
+                            800: '#1e3a5f',
+                            900: '#0f172a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+    
+    <!-- Recharts dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    
+    <!-- Recharts -->
+    <script src="https://unpkg.com/recharts@2.10.3/umd/Recharts.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0ea5e9 100%);
+        }
+        
+        .solar-gradient {
+            background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .glow-effect {
+            box-shadow: 0 0 40px rgba(251, 191, 36, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+    <div id="root"></div>
+    
+    {% raw %}<script type="text/babel">
+        // ตรวจสอบว่า Recharts โหลดแล้ว
+        if (typeof Recharts === 'undefined') {
+            document.getElementById('root').innerHTML = '<div style="color:red;padding:40px;font-size:20px;">❌ Recharts โหลดไม่ได้ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต</div>';
+            throw new Error('Recharts is not loaded');
+        }
+        const { useState, useEffect, useCallback } = React;
+        const { 
+            LineChart, Line, AreaChart, Area, BarChart, Bar, 
+            PieChart, Pie, Cell, RadialBarChart, RadialBar,
+            XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
+        } = Recharts;
+
+        // ========================================
+        // Icon Components (Lucide-style SVG)
+        // ========================================
+        
+        const SunIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+            </svg>
+        );
+        
+        const BoltIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+        );
+        
+        const TrendingUpIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                <polyline points="17 6 23 6 23 12"/>
+            </svg>
+        );
+        
+        const DollarIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+        );
+        
+        const LeafIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/>
+                <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/>
+            </svg>
+        );
+        
+        const BatteryIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="1" y="6" width="18" height="12" rx="2" ry="2"/>
+                <line x1="23" y1="13" x2="23" y2="11"/>
+            </svg>
+        );
+        
+        const MapPinIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+            </svg>
+        );
+        
+        const SettingsIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+        );
+        
+        const CalendarIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+        );
+        
+        const ClockIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+            </svg>
+        );
+        
+        const CheckCircleIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+        );
+        
+        const AlertIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                <line x1="12" y1="9" x2="12" y2="13"/>
+                <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+        );
+        
+        const ArrowUpIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="19" x2="12" y2="5"/>
+                <polyline points="5 12 12 5 19 12"/>
+            </svg>
+        );
+        
+        const ArrowDownIcon = ({ className }) => (
+            <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="5" x2="12" y2="19"/>
+                <polyline points="19 12 12 19 5 12"/>
+            </svg>
+        );
+
+        // ========================================
+        // Sample Data
+        // ========================================
+        
+        const monthlyProductionData = [
+            { month: 'ม.ค.', production: 420, target: 400, savings: 2100 },
+            { month: 'ก.พ.', production: 480, target: 450, savings: 2400 },
+            { month: 'มี.ค.', production: 550, target: 500, savings: 2750 },
+            { month: 'เม.ย.', production: 620, target: 580, savings: 3100 },
+            { month: 'พ.ค.', production: 580, target: 550, savings: 2900 },
+            { month: 'มิ.ย.', production: 510, target: 480, savings: 2550 },
+            { month: 'ก.ค.', production: 490, target: 460, savings: 2450 },
+            { month: 'ส.ค.', production: 520, target: 490, savings: 2600 },
+            { month: 'ก.ย.', production: 480, target: 450, savings: 2400 },
+            { month: 'ต.ค.', production: 450, target: 420, savings: 2250 },
+            { month: 'พ.ย.', production: 430, target: 400, savings: 2150 },
+            { month: 'ธ.ค.', production: 400, target: 380, savings: 2000 },
+        ];
+        
+        const hourlyData = [
+            { hour: '06:00', power: 0.2, irradiance: 50 },
+            { hour: '07:00', power: 0.8, irradiance: 150 },
+            { hour: '08:00', power: 1.8, irradiance: 350 },
+            { hour: '09:00', power: 3.2, irradiance: 550 },
+            { hour: '10:00', power: 4.1, irradiance: 720 },
+            { hour: '11:00', power: 4.6, irradiance: 850 },
+            { hour: '12:00', power: 4.8, irradiance: 920 },
+            { hour: '13:00', power: 4.7, irradiance: 900 },
+            { hour: '14:00', power: 4.3, irradiance: 800 },
+            { hour: '15:00', power: 3.5, irradiance: 650 },
+            { hour: '16:00', power: 2.4, irradiance: 450 },
+            { hour: '17:00', power: 1.2, irradiance: 250 },
+            { hour: '18:00', power: 0.3, irradiance: 80 },
+        ];
+        
+        const roiData = [
+            { year: 'ปี 1', cumulative: -85000, savings: 15000 },
+            { year: 'ปี 2', cumulative: -55000, savings: 30000 },
+            { year: 'ปี 3', cumulative: -25000, savings: 30000 },
+            { year: 'ปี 4', cumulative: 5000, savings: 30000 },
+            { year: 'ปี 5', cumulative: 35000, savings: 30000 },
+        ];
+        
+        const energyMixData = [
+            { name: 'Solar', value: 65, color: '#fbbf24' },
+            { name: 'Grid', value: 25, color: '#3b82f6' },
+            { name: 'Battery', value: 10, color: '#10b981' },
+        ];
+        
+        // ========================================
+        // Stat Card Component
+        // ========================================
+        
+        const StatCard = ({ title, value, unit, change, changeType, icon: Icon, color, subtext }) => {
+            const colorClasses = {
+                yellow: 'from-amber-400 to-yellow-500',
+                blue: 'from-blue-400 to-blue-600',
+                green: 'from-emerald-400 to-green-600',
+                purple: 'from-purple-400 to-purple-600',
+                orange: 'from-orange-400 to-orange-600',
+            };
+            
+            return (
+                <div className="glass-card rounded-2xl p-6 stat-card transition-all duration-300 hover:shadow-xl">
+                    <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                            <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-bold text-slate-800">{value}</span>
+                                <span className="text-slate-500 text-sm">{unit}</span>
+                            </div>
+                            {change && (
+                                <div className={`flex items-center gap-1 mt-2 text-sm ${changeType === 'up' ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {changeType === 'up' ? <ArrowUpIcon className="w-4 h-4" /> : <ArrowDownIcon className="w-4 h-4" />}
+                                    <span>{change}</span>
+                                </div>
+                            )}
+                            {subtext && <p className="text-slate-400 text-xs mt-2">{subtext}</p>}
+                        </div>
+                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center shadow-lg`}>
+                            <Icon className="w-7 h-7 text-white" />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        // ========================================
+        // Chart Card Component
+        // ========================================
+        
+        const ChartCard = ({ title, subtitle, children, className = '' }) => (
+            <div className={`glass-card rounded-2xl p-6 ${className}`}>
+                <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
+                    {subtitle && <p className="text-slate-500 text-sm">{subtitle}</p>}
+                </div>
+                {children}
+            </div>
+        );
+        
+        // ========================================
+        // Progress Ring Component
+        // ========================================
+        
+        const ProgressRing = ({ progress, size = 120, strokeWidth = 10, color = '#fbbf24' }) => {
+            const radius = (size - strokeWidth) / 2;
+            const circumference = radius * 2 * Math.PI;
+            const offset = circumference - (progress / 100) * circumference;
+            
+            return (
+                <div className="relative" style={{ width: size, height: size }}>
+                    <svg className="transform -rotate-90" width={size} height={size}>
+                        <circle
+                            cx={size / 2}
+                            cy={size / 2}
+                            r={radius}
+                            stroke="#e2e8f0"
+                            strokeWidth={strokeWidth}
+                            fill="none"
+                        />
+                        <circle
+                            cx={size / 2}
+                            cy={size / 2}
+                            r={radius}
+                            stroke={color}
+                            strokeWidth={strokeWidth}
+                            fill="none"
+                            strokeDasharray={circumference}
+                            strokeDashoffset={offset}
+                            strokeLinecap="round"
+                            className="transition-all duration-1000 ease-out"
+                        />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-2xl font-bold text-slate-800">{progress}%</span>
+                    </div>
+                </div>
+            );
+        };
+
+        // ========================================
+        // Live Status Component
+        // ========================================
+        
+        const LiveStatus = ({ status, lastUpdate }) => (
+            <div className="flex items-center gap-3 bg-slate-100 rounded-full px-4 py-2">
+                <div className={`w-3 h-3 rounded-full ${status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
+                <span className="text-sm font-medium text-slate-700">
+                    {status === 'online' ? 'ระบบทำงานปกติ' : 'ออฟไลน์'}
+                </span>
+                <span className="text-xs text-slate-500">อัปเดต: {lastUpdate}</span>
+            </div>
+        );
+        
+        // ========================================
+        // Weather Widget Component
+        // ========================================
+        
+        const WeatherWidget = () => (
+            <div className="glass-card rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-slate-800">สภาพอากาศ</h3>
+                    <MapPinIcon className="w-5 h-5 text-slate-400" />
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-amber-300 to-yellow-500 rounded-2xl flex items-center justify-center animate-float">
+                        <SunIcon className="w-10 h-10 text-white" />
+                    </div>
+                    <div>
+                        <div className="text-4xl font-bold text-slate-800">32°C</div>
+                        <div className="text-slate-500">แดดจัด</div>
+                    </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-200">
+                    <div className="text-center">
+                        <div className="text-slate-500 text-xs mb-1">ความชื้น</div>
+                        <div className="font-semibold text-slate-700">45%</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-slate-500 text-xs mb-1">UV Index</div>
+                        <div className="font-semibold text-slate-700">8</div>
+                    </div>
+                    <div className="text-center">
+                        <div className="text-slate-500 text-xs mb-1">เมฆ</div>
+                        <div className="font-semibold text-slate-700">15%</div>
+                    </div>
+                </div>
+            </div>
+        );
+        
+        // ========================================
+        // System Health Component
+        // ========================================
+        
+        const SystemHealth = () => {
+            const systems = [
+                { name: 'แผงโซลาร์', status: 'normal', value: '98%' },
+                { name: 'อินเวอร์เตอร์', status: 'normal', value: '100%' },
+                { name: 'แบตเตอรี่', status: 'warning', value: '75%' },
+                { name: 'การเชื่อมต่อ', status: 'normal', value: 'Online' },
+            ];
+            
+            const statusColors = {
+                normal: 'bg-emerald-500',
+                warning: 'bg-amber-500',
+                error: 'bg-red-500',
+            };
+            
+            return (
+                <div className="glass-card rounded-2xl p-6">
+                    <h3 className="text-lg font-semibold text-slate-800 mb-4">สถานะระบบ</h3>
+                    <div className="space-y-4">
+                        {systems.map((system, index) => (
+                            <div key={index} className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-2.5 h-2.5 rounded-full ${statusColors[system.status]}`} />
+                                    <span className="text-slate-700">{system.name}</span>
+                                </div>
+                                <span className="font-medium text-slate-800">{system.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+        
+        // ========================================
+        // Quick Actions Component
+        // ========================================
+        
+        const QuickActions = () => {
+            const actions = [
+                { icon: CalendarIcon, label: 'รายงาน', color: 'bg-blue-500' },
+                { icon: SettingsIcon, label: 'ตั้งค่า', color: 'bg-slate-500' },
+                { icon: BoltIcon, label: 'วิเคราะห์', color: 'bg-amber-500' },
+                { icon: LeafIcon, label: 'CO₂', color: 'bg-emerald-500' },
+            ];
+            
+            return (
+                <div className="glass-card rounded-2xl p-6">
+                    <h3 className="text-lg font-semibold text-slate-800 mb-4">การดำเนินการ</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        {actions.map((action, index) => (
+                            <button
+                                key={index}
+                                className="flex flex-col items-center gap-2 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
+                            >
+                                <div className={`w-10 h-10 rounded-lg ${action.color} flex items-center justify-center`}>
+                                    <action.icon className="w-5 h-5 text-white" />
+                                </div>
+                                <span className="text-sm font-medium text-slate-700">{action.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+        
+        // ========================================
+        // NASA Solar Widget Component
+        // ========================================
+
+        const NasaSolarWidget = () => {
+            const [nasaData, setNasaData] = useState(null);
+            const [monthlyData, setMonthlyData] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+
+            useEffect(() => {
+                const fetchNASA = async () => {
+                    try {
+                        setLoading(true);
+                        // โรงเรียนสุรธรรมพิทักษ์ พิกัด
+                        const lat = 14.91, lon = 102.07;
+
+                        const [summaryRes, monthlyRes] = await Promise.all([
+                            fetch(`/api/nasa/solar-data?lat=${lat}&lon=${lon}&start=20240101&end=20241231`),
+                            fetch(`/api/nasa/monthly-solar?lat=${lat}&lon=${lon}&year=2024`),
+                        ]);
+
+                        const summary = await summaryRes.json();
+                        const monthly = await monthlyRes.json();
+
+                        if (summary.success) setNasaData(summary.summary);
+                        if (monthly.success) setMonthlyData(monthly.monthly);
+                    } catch (e) {
+                        setError("ไม่สามารถดึงข้อมูล NASA ได้");
+                    } finally {
+                        setLoading(false);
+                    }
+                };
+                fetchNASA();
+            }, []);
+
+            return (
+                <div className="mt-8">
+                    <div className="glass-card rounded-2xl p-6">
+                        {/* Header */}
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-800">NASA POWER — ข้อมูลแสงอาทิตย์จริง</h3>
+                                <p className="text-slate-400 text-sm">ข้อมูลรายปีจากดาวเทียม NASA สำหรับพิกัดโรงเรียน</p>
+                            </div>
+                            <div className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-100">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                <span className="text-xs text-blue-600 font-medium">NASA POWER API</span>
+                            </div>
+                        </div>
+
+                        {loading && (
+                            <div className="flex items-center justify-center py-12 gap-3">
+                                <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                                <span className="text-slate-500">กำลังดึงข้อมูลจาก NASA...</span>
+                            </div>
+                        )}
+
+                        {error && (
+                            <div className="py-8 text-center text-red-500">{error}</div>
+                        )}
+
+                        {!loading && nasaData && (
+                            <>
+                                {/* Summary Stats */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                                    {[
+                                        { label: "GHI เฉลี่ย/วัน", value: nasaData.avg_ghi_daily, unit: "kWh/m²", color: "text-amber-600", bg: "bg-amber-50" },
+                                        { label: "GHI ต่อปี", value: nasaData.annual_ghi, unit: "kWh/m²", color: "text-orange-600", bg: "bg-orange-50" },
+                                        { label: "อุณหภูมิเฉลี่ย", value: nasaData.avg_temp_c, unit: "°C", color: "text-red-500", bg: "bg-red-50" },
+                                        { label: "เมฆเฉลี่ย", value: nasaData.avg_cloud_pct, unit: "%", color: "text-blue-500", bg: "bg-blue-50" },
+                                    ].map((s, i) => (
+                                        <div key={i} className={`${s.bg} rounded-xl p-4 text-center`}>
+                                            <p className="text-slate-500 text-xs mb-1">{s.label}</p>
+                                            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+                                            <p className="text-slate-400 text-xs">{s.unit}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Monthly Chart */}
+                                {monthlyData.length > 0 && (
+                                    <>
+                                        <h4 className="text-sm font-semibold text-slate-700 mb-3">GHI รายเดือน (kWh/m²/วัน) — ข้อมูลจาก NASA</h4>
+                                        <ResponsiveContainer width="100%" height={220}>
+                                            <BarChart data={monthlyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                                <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} />
+                                                <YAxis stroke="#94a3b8" fontSize={11} />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor:'white', border:'none', borderRadius:'12px', boxShadow:'0 10px 40px rgba(0,0,0,0.1)' }}
+                                                    formatter={(v, name) => [v, name === 'ghi' ? 'GHI (kWh/m²)' : name]}
+                                                />
+                                                <Bar dataKey="ghi" fill="#fbbf24" radius={[4,4,0,0]} name="GHI" />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+
+                                        {/* Cloud % row */}
+                                        <div className="mt-4 flex flex-wrap gap-2">
+                                            {monthlyData.map((m, i) => (
+                                                <div key={i} className="flex flex-col items-center bg-slate-50 rounded-lg px-2 py-1.5 text-xs">
+                                                    <span className="text-slate-400">{m.month}</span>
+                                                    <span className="font-semibold text-blue-500">{m.cloud_pct}%</span>
+                                                    <span className="text-slate-300" style={{fontSize:'9px'}}>เมฆ</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+
+                                <p className="mt-4 text-xs text-slate-400 text-right">
+                                    ข้อมูลจาก NASA POWER API · community=RE · parameters: ALLSKY_SFC_SW_DWN, T2M, CLOUD_AMT
+                                </p>
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        // ========================================
+        // LocationMap Component (21st.dev inspired)
+        // Expandable map card with 3D tilt effect
+        // ========================================
+
+        const LocationMap = ({ location = "โรงเรียนสุรธรรมพิทักษ์", coordinates = "14.9100° N, 102.0714° E", className = "" }) => {
+            const [isHovered, setIsHovered] = useState(false);
+            const [isExpanded, setIsExpanded] = useState(false);
+            const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+            const handleMouseMove = (e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                setTilt({ x: ((e.clientY - cy) / (rect.height / 2)) * 6, y: ((e.clientX - cx) / (rect.width / 2)) * -6 });
+            };
+
+            const w = isExpanded ? 360 : 240;
+            const h = isExpanded ? 280 : 140;
+
+            return (
+                <div
+                    className={`relative cursor-pointer select-none ${className}`}
+                    style={{ perspective: '1000px', width: w, margin: '0 auto' }}
+                    onMouseMove={handleMouseMove}
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => { setTilt({ x:0, y:0 }); setIsHovered(false); }}
+                    onClick={() => setIsExpanded(!isExpanded)}
+                >
+                    <div style={{
+                        width: w, height: h,
+                        transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+                        transformStyle: 'preserve-3d',
+                        transition: 'width 0.4s cubic-bezier(.4,0,.2,1), height 0.4s cubic-bezier(.4,0,.2,1), transform 0.15s ease-out, box-shadow 0.3s',
+                        borderRadius: '16px', overflow: 'hidden',
+                        background: '#fff', border: '1px solid #e2e8f0',
+                        boxShadow: isHovered ? '0 20px 40px rgba(0,0,0,0.15)' : '0 4px 16px rgba(0,0,0,0.08)',
+                        position: 'relative',
+                    }}>
+                        {/* Gradient overlay */}
+                        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(241,245,249,0.5) 0%,transparent 50%,rgba(241,245,249,0.7) 100%)', pointerEvents:'none' }} />
+
+                        {/* Expanded map */}
+                        {isExpanded && (
+                            <div style={{ position:'absolute', inset:0, background:'#dde4ed' }}>
+                                <svg width="100%" height="100%" preserveAspectRatio="none">
+                                    {[35,65].map((y,i) => <line key={`h${i}`} x1="0%" y1={`${y}%`} x2="100%" y2={`${y}%`} stroke="rgba(255,255,255,0.6)" strokeWidth="4" />)}
+                                    {[30,70].map((x,i) => <line key={`v${i}`} x1={`${x}%`} y1="0%" x2={`${x}%`} y2="100%" stroke="rgba(255,255,255,0.5)" strokeWidth="3" />)}
+                                    {[20,50,80].map((y,i) => <line key={`sh${i}`} x1="0%" y1={`${y}%`} x2="100%" y2={`${y}%`} stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />)}
+                                    {[15,45,55,85].map((x,i) => <line key={`sv${i}`} x1={`${x}%`} y1="0%" x2={`${x}%`} y2="100%" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5" />)}
+                                </svg>
+                                {[{top:'40%',left:'10%',w:'15%',h:'20%'},{top:'15%',left:'35%',w:'12%',h:'15%'},{top:'70%',left:'75%',w:'18%',h:'18%'},{top:'20%',right:'10%',w:'10%',h:'25%'},{top:'55%',left:'5%',w:'8%',h:'12%'},{top:'8%',left:'75%',w:'14%',h:'10%'}].map((s,i) => (
+                                    <div key={i} style={{ position:'absolute', top:s.top, left:s.left, right:s.right, width:s.w, height:s.h, background:'rgba(100,116,139,0.35)', border:'1px solid rgba(100,116,139,0.2)', borderRadius:'3px' }} />
+                                ))}
+                                <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)' }}>
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{ filter:'drop-shadow(0 0 8px rgba(52,211,153,0.7))' }}>
+                                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="#34D399" />
+                                        <circle cx="12" cy="9" r="2.5" fill="white" />
+                                    </svg>
+                                </div>
+                                <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(255,255,255,0.45) 0%,transparent 50%)', pointerEvents:'none' }} />
+                            </div>
+                        )}
+
+                        {/* Grid pattern (collapsed) */}
+                        {!isExpanded && (
+                            <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.04 }}>
+                                <defs><pattern id="lmgrid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#0f172a" strokeWidth="0.5"/></pattern></defs>
+                                <rect width="100%" height="100%" fill="url(#lmgrid)" />
+                            </svg>
+                        )}
+
+                        {/* Content */}
+                        <div style={{ position:'relative', zIndex:10, height:'100%', display:'flex', flexDirection:'column', justifyContent:'space-between', padding:'20px' }}>
+                            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
+                                {!isExpanded && (
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                        style={{ filter: isHovered ? 'drop-shadow(0 0 6px rgba(52,211,153,0.8))' : 'drop-shadow(0 0 3px rgba(52,211,153,0.3))' }}>
+                                        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" x2="9" y1="3" y2="18"/><line x1="15" x2="15" y1="6" y2="21"/>
+                                    </svg>
+                                )}
+                                <div style={{ display:'flex', alignItems:'center', gap:'6px', padding:'4px 8px', borderRadius:'999px', background:'rgba(15,23,42,0.06)' }}>
+                                    <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#34D399', animation:'pulse 2s infinite' }} />
+                                    <span style={{ fontSize:'10px', fontWeight:500, color:'#64748b', textTransform:'uppercase', letterSpacing:'0.1em' }}>Live</span>
+                                </div>
+                            </div>
+                            <div>
+                                <p style={{ fontSize:'14px', fontWeight:500, color:'#1e293b', margin:'0 0 2px', transform: isHovered ? 'translateX(4px)' : 'translateX(0)', transition:'transform 0.25s' }}>{location}</p>
+                                {isExpanded && <p style={{ fontSize:'11px', fontFamily:'monospace', color:'#64748b', margin:'0 0 4px' }}>{coordinates}</p>}
+                                <div style={{ height:'1px', background:'linear-gradient(to right,rgba(52,211,153,0.6),rgba(52,211,153,0.2),transparent)', transformOrigin:'left', transform:`scaleX(${isHovered || isExpanded ? 1 : 0.3})`, transition:'transform 0.4s ease-out' }} />
+                            </div>
+                        </div>
+                    </div>
+                    {isHovered && !isExpanded && (
+                        <p style={{ position:'absolute', bottom:'-22px', left:'50%', transform:'translateX(-50%)', fontSize:'10px', color:'#94a3b8', whiteSpace:'nowrap' }}>Click to expand</p>
+                    )}
+                </div>
+            );
+        };
+
+        // ========================================
+        // Alerts Component
+        // ========================================
+        
+        const AlertsPanel = () => {
+            const alerts = [
+                { type: 'warning', message: 'แบตเตอรี่ต่ำกว่า 80%', time: '10 นาทีที่แล้ว' },
+                { type: 'success', message: 'ผลิตไฟฟ้าเกินเป้าหมาย 15%', time: '1 ชั่วโมงที่แล้ว' },
+                { type: 'info', message: 'อัปเดตระบบสำเร็จ', time: '3 ชั่วโมงที่แล้ว' },
+            ];
+            
+            const typeStyles = {
+                warning: 'bg-amber-50 border-amber-200 text-amber-800',
+                success: 'bg-emerald-50 border-emerald-200 text-emerald-800',
+                info: 'bg-blue-50 border-blue-200 text-blue-800',
+            };
+            
+            return (
+                <div className="glass-card rounded-2xl p-6">
+                    <h3 className="text-lg font-semibold text-slate-800 mb-4">การแจ้งเตือน</h3>
+                    <div className="space-y-3">
+                        {alerts.map((alert, index) => (
+                            <div key={index} className={`p-3 rounded-lg border ${typeStyles[alert.type]}`}>
+                                <div className="flex items-start justify-between">
+                                    <p className="text-sm font-medium">{alert.message}</p>
+                                    <span className="text-xs opacity-70">{alert.time}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        // ========================================
+        // Main Dashboard Component
+        // ========================================
+        
+        const SolarDashboard = () => {
+            const [currentTime, setCurrentTime] = useState(new Date());
+            const [currentPower, setCurrentPower] = useState(4.2);
+            
+            useEffect(() => {
+                const timer = setInterval(() => {
+                    setCurrentTime(new Date());
+                    // Simulate power fluctuation
+                    setCurrentPower(prev => {
+                        const change = (Math.random() - 0.5) * 0.2;
+                        return Math.max(0, Math.min(5, prev + change));
+                    });
+                }, 1000);
+                return () => clearInterval(timer);
+            }, []);
+            
+            const formatTime = (date) => {
+                return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            };
+            
+            const formatDate = (date) => {
+                return date.toLocaleDateString('th-TH', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            };
+            
+            return (
+                <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
+                    {/* Header */}
+                    <header className="gradient-bg text-white">
+                        <div className="max-w-7xl mx-auto px-6 py-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-xl flex items-center justify-center shadow-lg glow-effect">
+                                        <SunIcon className="w-7 h-7 text-white" />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-2xl font-bold">Solar Analytics Dashboard</h1>
+                                        <p className="text-blue-200 text-sm">โรงเรียนสุรธรรมพิทักษ์ | ระบบ 5 kW</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-6">
+                                    <LiveStatus status="online" lastUpdate={formatTime(currentTime)} />
+                                    <div className="text-right">
+                                        <div className="text-2xl font-bold">{formatTime(currentTime)}</div>
+                                        <div className="text-blue-200 text-sm">{formatDate(currentTime)}</div>
+                                    </div>
+                                    <a
+                                        href="/landing"
+                                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 transition-colors text-white text-sm font-medium border border-white/20"
+                                    >
+                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M19 12H5M12 5l-7 7 7 7"/>
+                                        </svg>
+                                        หน้าหลัก
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+                    
+                    {/* Main Content */}
+                    <main className="max-w-7xl mx-auto px-6 py-8">
+                        {/* Live Power Display */}
+                        <div className="glass-card rounded-3xl p-8 mb-8 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-amber-200/30 to-yellow-300/30 rounded-full blur-3xl" />
+                            <div className="relative flex items-center justify-between">
+                                <div>
+                                    <p className="text-slate-500 text-lg mb-2">กำลังผลิตไฟฟ้าปัจจุบัน</p>
+                                    <div className="flex items-baseline gap-3">
+                                        <span className="text-7xl font-bold bg-gradient-to-r from-amber-500 to-yellow-500 bg-clip-text text-transparent">
+                                            {currentPower.toFixed(2)}
+                                        </span>
+                                        <span className="text-3xl text-slate-400">kW</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-4">
+                                        <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse" />
+                                        <span className="text-emerald-600 font-medium">กำลังผลิตไฟฟ้า</span>
+                                        <span className="text-slate-400">| ประสิทธิภาพ 84%</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-8">
+                                    <ProgressRing progress={84} size={140} strokeWidth={12} color="#fbbf24" />
+                                    <div className="text-right">
+                                        <div className="mb-4">
+                                            <p className="text-slate-500 text-sm">วันนี้ผลิตได้</p>
+                                            <p className="text-3xl font-bold text-slate-800">24.8 <span className="text-lg text-slate-400">kWh</span></p>
+                                        </div>
+                                        <div>
+                                            <p className="text-slate-500 text-sm">ประหยัดได้</p>
+                                            <p className="text-3xl font-bold text-emerald-600">฿124 <span className="text-lg text-slate-400">วันนี้</span></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                            <StatCard
+                                title="ผลิตไฟฟ้าเดือนนี้"
+                                value="520"
+                                unit="kWh"
+                                change="+12% จากเดือนก่อน"
+                                changeType="up"
+                                icon={BoltIcon}
+                                color="yellow"
+                            />
+                            <StatCard
+                                title="ประหยัดค่าไฟ"
+                                value="฿2,600"
+                                unit="เดือนนี้"
+                                change="+8% จากเดือนก่อน"
+                                changeType="up"
+                                icon={DollarIcon}
+                                color="green"
+                            />
+                            <StatCard
+                                title="ลด CO₂"
+                                value="312"
+                                unit="kg"
+                                subtext="เทียบเท่าปลูกต้นไม้ 14 ต้น"
+                                icon={LeafIcon}
+                                color="blue"
+                            />
+                            <StatCard
+                                title="ROI สะสม"
+                                value="35%"
+                                unit="(ปีที่ 5)"
+                                change="คืนทุนแล้ว!"
+                                changeType="up"
+                                icon={TrendingUpIcon}
+                                color="purple"
+                            />
+                        </div>
+                        
+                        {/* Charts Row */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                            {/* Production Chart */}
+                            <ChartCard 
+                                title="การผลิตไฟฟ้ารายเดือน" 
+                                subtitle="เปรียบเทียบกับเป้าหมาย"
+                                className="lg:col-span-2"
+                            >
+                                <ResponsiveContainer width="100%" height={300}>
+                                    <AreaChart data={monthlyProductionData}>
+                                        <defs>
+                                            <linearGradient id="colorProduction" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#fbbf24" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                        <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} />
+                                        <YAxis stroke="#94a3b8" fontSize={12} />
+                                        <Tooltip 
+                                            contentStyle={{ 
+                                                backgroundColor: 'white', 
+                                                border: 'none', 
+                                                borderRadius: '12px',
+                                                boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+                                            }}
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="production" 
+                                            stroke="#fbbf24" 
+                                            strokeWidth={3}
+                                            fill="url(#colorProduction)" 
+                                            name="ผลิตได้ (kWh)"
+                                        />
+                                        <Line 
+                                            type="monotone" 
+                                            dataKey="target" 
+                                            stroke="#94a3b8" 
+                                            strokeWidth={2}
+                                            strokeDasharray="5 5"
+                                            dot={false}
+                                            name="เป้าหมาย (kWh)"
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </ChartCard>
+                            
+                            {/* Energy Mix */}
+                            <ChartCard title="สัดส่วนพลังงาน" subtitle="แหล่งพลังงานที่ใช้">
+                                <div className="flex flex-col items-center">
+                                    <ResponsiveContainer width="100%" height={200}>
+                                        <PieChart>
+                                            <Pie
+                                                data={energyMixData}
+                                                cx="50%"
+                                                cy="50%"
+                                                innerRadius={60}
+                                                outerRadius={80}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                {energyMixData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.color} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                    <div className="flex gap-6 mt-4">
+                                        {energyMixData.map((item, index) => (
+                                            <div key={index} className="flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                                                <span className="text-sm text-slate-600">{item.name} {item.value}%</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </ChartCard>
+                        </div>
+                        
+                        {/* Second Charts Row */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                            {/* Hourly Production */}
+                            <ChartCard title="การผลิตไฟฟ้ารายชั่วโมง" subtitle="วันนี้">
+                                <ResponsiveContainer width="100%" height={250}>
+                                    <BarChart data={hourlyData}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                        <XAxis dataKey="hour" stroke="#94a3b8" fontSize={11} />
+                                        <YAxis stroke="#94a3b8" fontSize={11} />
+                                        <Tooltip 
+                                            contentStyle={{ 
+                                                backgroundColor: 'white', 
+                                                border: 'none', 
+                                                borderRadius: '12px',
+                                                boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+                                            }}
+                                        />
+                                        <Bar 
+                                            dataKey="power" 
+                                            fill="#fbbf24" 
+                                            radius={[4, 4, 0, 0]}
+                                            name="กำลังไฟฟ้า (kW)"
+                                        />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </ChartCard>
+                            
+                            {/* ROI Chart */}
+                            <ChartCard title="ผลตอบแทนการลงทุน (ROI)" subtitle="5 ปี">
+                                <ResponsiveContainer width="100%" height={250}>
+                                    <AreaChart data={roiData}>
+                                        <defs>
+                                            <linearGradient id="colorROI" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                                                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                        <XAxis dataKey="year" stroke="#94a3b8" fontSize={12} />
+                                        <YAxis stroke="#94a3b8" fontSize={12} tickFormatter={(v) => `฿${v/1000}k`} />
+                                        <Tooltip 
+                                            contentStyle={{ 
+                                                backgroundColor: 'white', 
+                                                border: 'none', 
+                                                borderRadius: '12px',
+                                                boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
+                                            }}
+                                            formatter={(value) => [`฿${value.toLocaleString()}`, 'กำไร/ขาดทุนสะสม']}
+                                        />
+                                        <Area 
+                                            type="monotone" 
+                                            dataKey="cumulative" 
+                                            stroke="#10b981" 
+                                            strokeWidth={3}
+                                            fill="url(#colorROI)" 
+                                        />
+                                    </AreaChart>
+                                </ResponsiveContainer>
+                            </ChartCard>
+                        </div>
+                        
+                        {/* Bottom Widgets */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <WeatherWidget />
+                            <SystemHealth />
+                            <QuickActions />
+                            <AlertsPanel />
+                        </div>
+
+                        {/* NASA Solar Data Section */}
+                        <NasaSolarWidget />
+
+                        {/* Location Section */}
+                        <div className="mt-8">
+                            <div className="glass-card rounded-2xl p-6">
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg">
+                                        <MapPinIcon className="w-5 h-5 text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-slate-800">ตำแหน่งที่ตั้ง</h3>
+                                        <p className="text-slate-400 text-sm">คลิกการ์ดเพื่อดูแผนที่โดยละเอียด</p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col md:flex-row items-center justify-center gap-10 py-4">
+                                    <LocationMap
+                                        location="โรงเรียนสุรธรรมพิทักษ์"
+                                        coordinates="14.9100° N, 102.0714° E"
+                                    />
+                                    <div className="space-y-3 text-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-slate-700">จังหวัดนครราชสีมา</p>
+                                                <p className="text-slate-400 text-xs">ประเทศไทย</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-slate-700">โซนพลังงานแสงอาทิตย์: เขต 4</p>
+                                                <p className="text-slate-400 text-xs">ศักยภาพสูง</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-slate-700">GHI เฉลี่ย ~4.8 kWh/m²/วัน</p>
+                                                <p className="text-slate-400 text-xs">ข้อมูลจาก pvlib</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
+                                                <div className="w-2.5 h-2.5 rounded-full bg-purple-400" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-slate-700">ระบบ 5 kW | ติดตั้ง 2024</p>
+                                                <p className="text-slate-400 text-xs">Solar Atlas AI</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                    
+                    {/* Footer */}
+                    <footer className="bg-slate-900 text-white py-8 mt-12">
+                        <div className="max-w-7xl mx-auto px-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-lg flex items-center justify-center">
+                                        <SunIcon className="w-6 h-6 text-white" />
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">Solar Analytics Dashboard</p>
+                                        <p className="text-slate-400 text-sm">โรงเรียนสุรธรรมพิทักษ์</p>
+                                    </div>
+                                </div>
+                                <div className="text-right text-slate-400 text-sm">
+                                    <p>Powered by React, Tailwind CSS & Recharts</p>
+                                    <p>© 2024 All rights reserved</p>
+                                </div>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+        
+        // ========================================
+        // Render App
+        // ========================================
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SolarDashboard />);
+    </script>{% endraw %}
+</body>
+</html>

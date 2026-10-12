@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Atlas AI - พลังงานสะอาดเพื่ออนาคต</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+Thai:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Inter', 'Noto Sans Thai', sans-serif; }
+
+        .gradient-text {
+            background: linear-gradient(135deg, #fbbf24, #0ea5e9, #38bdf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-bg {
+            background: radial-gradient(ellipse at 60% 0%, rgba(14,165,233,0.15) 0%, transparent 55%),
+                        radial-gradient(ellipse at 0% 100%, rgba(30,58,95,0.4) 0%, transparent 50%),
+                        linear-gradient(135deg, #0f172a 0%, #1e3a5f 50%, #0f172a 100%);
+        }
+
+        /* Marquee */
+        .marquee-track {
+            display: flex;
+            gap: 16px;
+            animation: marquee-scroll 45s linear infinite;
+            will-change: transform;
+        }
+        @keyframes marquee-scroll {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .marquee-wrapper {
+            -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+            mask-image: linear-gradient(to bottom, transparent 0%, black 20%, black 80%, transparent 100%);
+        }
+
+        /* Card hover tilt */
+        .img-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .img-card:hover {
+            transform: scale(1.04) translateY(-4px);
+            box-shadow: 0 24px 48px rgba(0,0,0,0.5);
+        }
+
+        /* Fade-up animation */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-up-1 { animation: fadeUp 0.7s ease forwards; opacity: 0; }
+        .fade-up-2 { animation: fadeUp 0.7s 0.15s ease forwards; opacity: 0; }
+        .fade-up-3 { animation: fadeUp 0.7s 0.3s ease forwards; opacity: 0; }
+        .fade-up-4 { animation: fadeUp 0.7s 0.45s ease forwards; opacity: 0; }
+
+        /* Button pulse */
+        .btn-primary {
+            background: linear-gradient(135deg, #0ea5e9, #1e3a5f);
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 8px 32px rgba(14,165,233,0.35);
+        }
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 40px rgba(14,165,233,0.5);
+        }
+        .btn-primary:active { transform: scale(0.97); }
+
+        .btn-secondary {
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.06);
+            backdrop-filter: blur(8px);
+            transition: background 0.2s, transform 0.2s;
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.12);
+            transform: scale(1.03);
+        }
+
+        /* Floating particles */
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            animation: float-particle linear infinite;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        @keyframes float-particle {
+            0%   { transform: translateY(0) rotate(0deg); opacity: 0.15; }
+            50%  { opacity: 0.3; }
+            100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
+        }
+
+        /* Stats counter */
+        .stat-card {
+            background: rgba(14,165,233,0.05);
+            border: 1px solid rgba(14,165,233,0.12);
+            backdrop-filter: blur(12px);
+        }
+
+        /* Nav */
+        .nav-blur {
+            background: rgba(15,23,42,0.85);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(14,165,233,0.1);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+</head>
+<body class="hero-bg min-h-screen text-white overflow-x-hidden">
+
+    <!-- Floating Particles -->
+    <div id="particles" class="fixed inset-0 pointer-events-none z-0"></div>
+
+    <!-- Navigation -->
+    <nav class="nav-blur fixed top-0 left-0 right-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg">
+                    <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="12" cy="12" r="4"/>
+                        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                    </svg>
+                </div>
+                <span class="font-bold text-lg tracking-tight">Solar Atlas AI</span>
+            </div>
+            <div class="hidden md:flex items-center gap-8 text-sm text-slate-300">
+                <a href="/calculator" class="hover:text-white transition-colors">คำนวณ ROI</a>
+                <a href="/dashboard" class="hover:text-white transition-colors">Dashboard</a>
+                <a href="#features" class="hover:text-white transition-colors">ฟีเจอร์</a>
+            </div>
+            <a href="/calculator" class="btn-primary px-5 py-2 rounded-full text-sm font-semibold text-white">
+                เริ่มใช้งาน →
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative min-h-screen flex flex-col items-center justify-center text-center px-6 pt-24 pb-0 overflow-hidden">
+
+        <!-- Hero Content -->
+        <div class="relative z-10 flex flex-col items-center max-w-4xl mx-auto">
+
+            <!-- Tagline pill -->
+            <div class="fade-up-1 mb-6 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-300 text-sm font-medium backdrop-blur-sm">
+                <span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+                พัฒนาโดยโรงเรียนสุรธรรมพิทักษ์ · ระบบ AI ชั้นนำ
+            </div>
+
+            <!-- Title -->
+            <h1 class="fade-up-2 text-5xl md:text-7xl font-black tracking-tight leading-tight mb-6">
+                วิเคราะห์พลังงาน<br>
+                <span class="gradient-text">โซลาร์เซลล์</span><br>
+                ด้วย AI
+            </h1>
+
+            <!-- Description -->
+            <p class="fade-up-3 text-lg md:text-xl text-slate-300 max-w-2xl leading-relaxed mb-10">
+                คำนวณ ROI · ตรวจจับทิศหลังคาด้วย YOLO · วิเคราะห์แสงอาทิตย์แบบเรียลไทม์ด้วย pvlib<br>
+                <span class="text-slate-400 text-base">มาตรฐาน MEA/PEA · ข้อมูลแม่นยำ 99.2%</span>
+            </p>
+
+            <!-- CTA Buttons -->
+            <div class="fade-up-4 flex flex-col sm:flex-row gap-4 items-center">
+                <a href="/calculator" class="btn-primary px-8 py-4 rounded-full font-bold text-lg text-white flex items-center gap-2">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <rect x="4" y="2" width="16" height="20" rx="2"/>
+                        <line x1="8" y1="6" x2="16" y2="6"/>
+                        <line x1="8" y1="10" x2="12" y2="10"/>
+                        <line x1="8" y1="14" x2="16" y2="14"/>
+                        <line x1="8" y1="18" x2="12" y2="18"/>
+                    </svg>
+                    คำนวณ ROI ฟรี
+                </a>
+                <a href="/dashboard" class="btn-secondary px-8 py-4 rounded-full font-semibold text-lg text-white flex items-center gap-2">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                    </svg>
+                    ดู Dashboard
+                </a>
+            </div>
+
+            <!-- Stats row -->
+            <div class="fade-up-4 mt-14 grid grid-cols-3 gap-6 w-full max-w-lg">
+                <div class="stat-card rounded-2xl p-4 text-center">
+                    <div class="text-2xl font-black text-amber-400">99.2%</div>
+                    <div class="text-slate-400 text-xs mt-1">ความแม่นยำ</div>
+                </div>
+                <div class="stat-card rounded-2xl p-4 text-center">
+                    <div class="text-2xl font-black text-emerald-400">5 kW</div>
+                    <div class="text-slate-400 text-xs mt-1">ระบบติดตั้ง</div>
+                </div>
+                <div class="stat-card rounded-2xl p-4 text-center">
+                    <div class="text-2xl font-black text-blue-400">pvlib</div>
+                    <div class="text-slate-400 text-xs mt-1">NASA Data</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Animated Image Marquee (bottom) -->
+        <div class="marquee-wrapper absolute bottom-0 left-0 w-full h-56 md:h-72 overflow-hidden">
+            <div class="marquee-track" id="marqueeTrack">
+                <!-- Images injected by JS -->
+            </div>
+        </div>
+
+        <!-- Gradient fade from hero to marquee -->
+        <div class="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#0f172a] to-transparent pointer-events-none z-10"></div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="relative z-10 max-w-7xl mx-auto px-6 py-24">
+        <div class="text-center mb-16">
+            <h2 class="text-4xl md:text-5xl font-black mb-4">ฟีเจอร์หลัก</h2>
+            <p class="text-slate-400 text-lg">ครบทุกเครื่องมือที่คุณต้องการ</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Feature 1 -->
+            <div class="stat-card rounded-3xl p-8 hover:border-amber-500/30 transition-all duration-300 group">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform">
+                    <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-3">คำนวณ ROI แม่นยำ</h3>
+                <p class="text-slate-400 leading-relaxed">คำนวณผลตอบแทนการลงทุนด้วย pvlib + ข้อมูลดาวเทียม NASA พร้อมวิเคราะห์ Payback Period ถึง 30 ปี</p>
+            </div>
+
+            <!-- Feature 2 -->
+            <div class="stat-card rounded-3xl p-8 hover:border-emerald-500/30 transition-all duration-300 group">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform">
+                    <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-3">ตรวจจับทิศหลังคา AI</h3>
+                <p class="text-slate-400 leading-relaxed">โมเดล YOLO Segmentation ตรวจจับทิศทาง East/West/North/South/Flat จากภาพดาวเทียม 5 ทิศทาง</p>
+            </div>
+
+            <!-- Feature 3 -->
+            <div class="stat-card rounded-3xl p-8 hover:border-blue-500/30 transition-all duration-300 group">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform">
+                    <svg class="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-3">Dashboard แบบเรียลไทม์</h3>
+                <p class="text-slate-400 leading-relaxed">กราฟผลิตไฟฟ้า, ROI, สัดส่วนพลังงาน พร้อม Animation และข้อมูลอัปเดตแบบ Live</p>
+            </div>
+        </div>
+
+        <!-- CTA Bottom -->
+        <div class="text-center mt-20">
+            <p class="text-slate-400 mb-6 text-lg">พร้อมเริ่มวิเคราะห์พลังงานของคุณแล้วหรือยัง?</p>
+            <a href="/calculator" class="btn-primary inline-flex items-center gap-3 px-10 py-4 rounded-full font-bold text-xl text-white">
+                <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="12" cy="12" r="4"/>
+                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+                </svg>
+                เริ่มคำนวณ ROI ฟรีเลย
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/5 py-10 text-center text-slate-500 text-sm z-10 relative">
+        <p>© 2024 Solar Atlas AI · พัฒนาโดย <span class="text-slate-300 font-medium">โรงเรียนสุรธรรมพิทักษ์</span></p>
+        <p class="mt-1">Powered by pvlib · YOLO · React · Flask</p>
+    </footer>
+
+    <script>
+        // ── Floating particles ──────────────────────────────────────────────
+        (function createParticles() {
+            const container = document.getElementById('particles');
+            const colors = ['#fbbf24','#0ea5e9','#38bdf8','#1e3a5f','#7dd3fc'];
+            for (let i = 0; i < 22; i++) {
+                const p = document.createElement('div');
+                p.classList.add('particle');
+                const size = Math.random() * 6 + 2;
+                Object.assign(p.style, {
+                    width: size + 'px', height: size + 'px',
+                    left: Math.random() * 100 + 'vw',
+                    bottom: '-20px',
+                    background: colors[Math.floor(Math.random() * colors.length)],
+                    animationDuration: (Math.random() * 15 + 10) + 's',
+                    animationDelay: (Math.random() * 12) + 's',
+                });
+                container.appendChild(p);
+            }
+        })();
+
+        // ── Image Marquee ────────────────────────────────────────────────────
+        const SOLAR_IMAGES = [
+            "https://images.unsplash.com/photo-1509391366360-2e959784a276?w=300&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=300&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=300&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=300&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1592833159155-c62df1b65634?w=300&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1548613053-22087dd8edb8?w=300&h=400&fit=crop",
+            "https://images.unsplash.com/photo-1611365892117-00ac5ef43c90?w=300&h=400&fit=crop",
+        ];
+
+        // Duplicate for seamless loop
+        const allImages = [...SOLAR_IMAGES, ...SOLAR_IMAGES];
+        const track = document.getElementById('marqueeTrack');
+        const rotations = [-3, 4, -2, 5, -4, 3, -5, 2];
+
+        allImages.forEach((src, i) => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'img-card flex-shrink-0';
+            const rot = rotations[i % rotations.length];
+            Object.assign(wrapper.style, {
+                width: '160px',
+                height: '220px',
+                transform: `rotate(${rot}deg)`,
+                borderRadius: '16px',
+                overflow: 'hidden',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+            });
+
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = 'solar panel';
+            img.loading = 'lazy';
+            Object.assign(img.style, { width:'100%', height:'100%', objectFit:'cover' });
+
+            // Overlay tint
+            const tint = document.createElement('div');
+            Object.assign(tint.style, {
+                position:'absolute', inset:0,
+                background:'linear-gradient(to bottom,transparent 60%,rgba(15,23,42,0.6))',
+                pointerEvents:'none',
+            });
+            wrapper.style.position = 'relative';
+            wrapper.appendChild(img);
+            wrapper.appendChild(tint);
+            track.appendChild(wrapper);
+        });
+
+        // Pause marquee on hover
+        track.addEventListener('mouseenter', () => track.style.animationPlayState = 'paused');
+        track.addEventListener('mouseleave', () => track.style.animationPlayState = 'running');
+
+        // ── Number counter animation ─────────────────────────────────────────
+        // (Stats are static in this version for simplicity)
+    </script>
+</body>
+</html>

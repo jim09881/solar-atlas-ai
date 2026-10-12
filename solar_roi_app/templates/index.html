@@ -1,0 +1,1268 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOLAR ATLAS AI - คำนวณความคุ้มทุนโซลาร์เซลล์</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet Maps CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+</head>
+<body>
+    <div class="container-wrapper">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <img src="{{ url_for('static', filename='logo.jpg') }}" alt="โรงเรียนสุรธรรมพิทักษ์" class="school-logo">
+                    <div class="logo">
+                        <i class="fas fa-sun"></i>
+                        <span>SOLAR ATLAS AI</span>
+                    </div>
+                </div>
+                <h1>ระบบคำนวณความคุ้มทุนโซลาร์เซลล์</h1>
+                <p class="subtitle">วิเคราะห์การลงทุนพลังงานสะอาดด้วยเทคโนโลยี AI และข้อมูลสภาพอากาศแบบเรียลไทม์</p>
+                <div class="header-badges">
+                    <span class="badge badge-primary"><i class="fas fa-chart-line"></i> ROI Analysis</span>
+                    <span class="badge badge-outline"><i class="fas fa-satellite-dish"></i> pvlib + NASA Data</span>
+                    <span class="badge badge-soft"><i class="fas fa-robot"></i> AI Roof Detection</span>
+                    <span class="badge badge-accent"><i class="fas fa-shield-alt"></i> มาตรฐาน MEA/PEA</span>
+                </div>
+                <div class="credentials">
+                    <div class="credential-item">
+                        <i class="fas fa-university"></i>
+                        <span>พัฒนาโดย โรงเรียนสุรธรรมพิทักษ์</span>
+                    </div>
+                    <div class="credential-item">
+                        <i class="fas fa-certificate"></i>
+                        <span>ใช้มาตรฐานการไฟฟ้าไทย</span>
+                    </div>
+                </div>
+                <div class="dashboard-link" style="margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;">
+                    <a href="/landing" class="btn-dashboard" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                        <i class="fas fa-home"></i>
+                        หน้าแรก
+                    </a>
+                    <a href="/dashboard" class="btn-dashboard">
+                        <i class="fas fa-chart-line"></i>
+                        เปิด Dashboard แบบ React
+                    </a>
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="content-wrapper">
+            <!-- Left Panel - Input Form -->
+            <div class="left-panel">
+                <div class="form-card">
+                    <h2><i class="fas fa-cogs"></i> กรอกข้อมูลของคุณ</h2>
+                    
+                    <!-- Location Search -->
+                    <div class="location-search-container">
+                        <h3><i class="fas fa-search-location"></i> ค้นหาสถานที่</h3>
+                        <div class="search-input-wrapper">
+                            <input 
+                                type="text" 
+                                id="locationSearch" 
+                                placeholder="พิมพ์ชื่อสถานที่ เช่น บ้าน, โรงเรียน, ตำบล..."
+                                autocomplete="off"
+                            >
+                            <button type="button" id="searchBtn" class="btn-search">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button type="button" id="myLocationBtn" class="btn-my-location" title="ใช้ตำแหน่งปัจจุบัน">
+                                <i class="fas fa-crosshairs"></i>
+                            </button>
+                        </div>
+                        <div id="searchResults" class="search-results hidden"></div>
+                        <div id="selectedLocation" class="selected-location hidden">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span id="selectedLocationText"></span>
+                            <button type="button" id="clearLocation" class="btn-clear">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <small class="search-hint">
+                            <i class="fas fa-lightbulb"></i> 
+                            พิมพ์ชื่อสถานที่ใกล้บ้านคุณ หรือคลิกปุ่ม <i class="fas fa-crosshairs"></i> เพื่อใช้ตำแหน่ง GPS
+                        </small>
+                    </div>
+                    
+                    <form id="roiForm">
+                        <div class="form-group">
+                            <label for="latitude">ละติจูด (Latitude)</label>
+                            <input 
+                                type="number" 
+                                id="latitude" 
+                                name="latitude" 
+                                step="0.0001" 
+                                value="14.909999243404515"
+                                placeholder="เช่น 14.909999243404515"
+                                required
+                            >
+                            <small>ระหว่าง -90 ถึง 90</small>
+                                                        <!-- Battery Storage Options -->
+                                                        <div class="section-group">
+                                                            <h4>🔋 ระบบเก็บพลังงาน (แบตเตอรี่)</h4>
+                                                            <div class="form-group">
+                                                                <label>
+                                                                    <input type="checkbox" id="battery_enable" name="battery_enable">
+                                                                    เพิ่มระบบแบตเตอรี่
+                                                                </label>
+                                                            </div>
+                                                            <div id="batteryPanel" style="display: none;">
+                                                                <div class="form-group">
+                                                                    <label for="battery_capacity">ความจุแบตเตอรี่ (kWh)</label>
+                                                                    <input type="number" id="battery_capacity" name="battery_capacity" min="1" max="100" value="10" step="0.1">
+                                                                    <small>ขนาด 5-50 kWh สำหรับบ้าน, 50-100+ kWh สำหรับอาคาร</small>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label for="battery_cost" title="ราคาแบตเตอรี่ต่อ kWh">ราคาแบตเตอรี่ (บาท/kWh) <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i></label>
+                                                                    <input type="number" id="battery_cost" name="battery_cost" min="5000" max="20000" value="10000" step="1000">
+                                                                    <small>ค่าเริ่มต้น: 10,000 บาท/kWh (LiFePO4 ~8,000-12,000)</small>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label for="battery_efficiency" title="ประสิทธิภาพแบตเตอรี่ (%)">ประสิทธิภาพ (%) <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i></label>
+                                                                    <input type="number" id="battery_efficiency" name="battery_efficiency" min="70" max="95" value="85" step="1">
+                                                                    <small>ค่าเริ่มต้น: 85% (round-trip efficiency)</small>
+                                                                </div>
+                                                                <div class="form-group">
+                                                                    <label for="battery_lifespan" title="อายุการใช้งานแบตเตอรี่ (ปี)">อายุการใช้งาน (ปี) <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i></label>
+                                                                    <input type="number" id="battery_lifespan" name="battery_lifespan" min="5" max="30" value="10" step="1">
+                                                                    <small>ค่าเริ่มต้น: 10 ปี (LiFePO4 ~10-15 ปี)</small>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                        </div>
+
+                        <div class="form-group">
+                            <label for="longitude">ลองติจูด (Longitude)</label>
+                            <input 
+                                type="number" 
+                                id="longitude" 
+                                name="longitude" 
+                                step="0.0001" 
+                                value="102.07143026893837"
+                                placeholder="เช่น 102.07143026893837"
+                                required
+                            >
+                            <small>ระหว่าง -180 ถึง 180</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="monthly_bill">ค่าไฟต่อเดือน (บาท)</label>
+                            <input 
+                                type="number" 
+                                id="monthly_bill" 
+                                name="monthly_bill" 
+                                step="0.01" 
+                                value=""
+                                placeholder="เช่น 2000"
+                            >
+                            <small>ป้อนค่าไฟต่อเดือนเพื่อคำนวณราคาไฟฟ้าต่อหน่วยอัตโนมัติ</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="electricity_price">ราคาไฟฟ้า (บาท/kWh)</label>
+                            <input 
+                                type="number" 
+                                id="electricity_price" 
+                                name="electricity_price" 
+                                step="0.01" 
+                                value="5.50"
+                                placeholder="เช่น 5.50"
+                                required
+                            >
+                            <small>ราคาไฟฟ้าปัจจุบันของคุณ (จะคำนวณอัตโนมัติจากค่าไฟต่อเดือน)</small>
+                        </div>
+
+                        <!-- Advanced Options Toggle -->
+                        <div class="form-group">
+                            <button type="button" class="btn-toggle-advanced">
+                                <i class="fas fa-chevron-down"></i> ตัวเลือกเพิ่มเติม
+                            </button>
+                        </div>
+
+                        <!-- Advanced Options Panel -->
+                        <div id="advancedPanel" class="advanced-options hidden">
+                            
+                            <!-- Electricity Estimation -->
+                            <div class="section-group">
+                                <h4>💡 ประมาณการการใช้ไฟฟ้า</h4>
+                                <div class="form-group">
+                                    <label for="household_people">จำนวนคนในครัวเรือน</label>
+                                    <input type="number" id="household_people" name="household_people" min="1" max="10" value="4" step="1">
+                                </div>
+                                <div class="form-group">
+                                    <label for="home_type">ประเภทบ้าน</label>
+                                    <select id="home_type" name="home_type">
+                                        <option value="apartment">อพาร์ตเมนต์/บ้านเล็ก</option>
+                                        <option value="house_small" selected>บ้านเดี่ยว</option>
+                                        <option value="house_large">อาคารสำนักงาน(ขนาดใหญ่)</option>
+                                        <option value="villa">วิลลา/บ้านพักตากอากาศ</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="air_conditioner_hours">ใช้ AC กี่ชั่วโมงต่อวัน</label>
+                                    <input type="number" id="air_conditioner_hours" name="air_conditioner_hours" min="0" max="24" value="8" step="1">
+                                </div>
+                                <button type="button" id="btn-estimate-usage" class="btn-secondary">
+                                    <i class="fas fa-calculator"></i> คำนวณความต้องการ
+                                </button>
+                                <div id="estimationResult" style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 6px; display: none;">
+                                    <strong>ประมาณการ:</strong> <span id="estimatedKwh">-</span> kWh/เดือน → แนะนำ <span id="recommendedKw">-</span> kW
+                                </div>
+                            </div>
+
+                            <!-- Weather/Cloud Impact -->
+                            <div class="section-group">
+                                <h4>☁️ สภาพอากาศและเมฆ</h4>
+                                <div class="form-group">
+                                    <label for="cloud_coverage">ประมาณการกลุ่มเมฆเฉลี่ย</label>
+                                    <select id="cloud_coverage" name="cloud_coverage">
+                                        <option value="clear">ใส/น้อย (75-85% ของ GHI)</option>
+                                        <option value="partly" selected>เมฆบางส่วน (60-75% ของ GHI)</option>
+                                        <option value="cloudy">เมฆมากหรือฤดูฝน (40-60% ของ GHI)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Financing Options -->
+                            <div class="section-group">
+                                <h4>💰 ตัวเลือกการกู้ยืม</h4>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="financing_enable" name="financing_enable">
+                                        ต้องการผ่อนชำระ
+                                    </label>
+                                </div>
+                                <div id="financingPanel" style="display: none;">
+                                    <div class="form-group">
+                                        <label for="loan_years">ระยะเวลากู้ (ปี)</label>
+                                        <select id="loan_years" name="loan_years">
+                                            <option value="5">5 ปี</option>
+                                            <option value="7" selected>7 ปี</option>
+                                            <option value="10">10 ปี</option>
+                                            <option value="15">15 ปี</option>
+                                        </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="interest_rate">อัตราดอกเบี้ย (%)</label>
+                                        <input type="number" id="interest_rate" name="interest_rate" min="0" max="10" value="3.5" step="0.1">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Comparison Tool -->
+                            <div class="section-group">
+                                <h4>⚖️ เปรียบเทียบหลายระบบ</h4>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="enable_comparison" name="enable_comparison">
+                                        แสดงการเปรียบเทียบ 3, 5, 10 kW
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Custom Settings -->
+                            <div class="section-group">
+                                <h4>⚙️ การตั้งค่าขั้นสูง</h4>
+                                <div class="form-group">
+                                    <label for="custom_panel_cost" title="ราคาติดตั้งแผงโซลาร์เซลล์ต่อ kW (บาท)">
+                                        ราคาแผงต่อ kW (บาท) <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i>
+                                    </label>
+                                    <input type="number" id="custom_panel_cost" name="custom_panel_cost" min="10000" max="150000" value="30000" step="1000">
+                                    <small>ค่าเริ่มต้น: 30000 บาท/kW</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom_installation_multiplier" title="ตัวคูณค่าติดตั้งเพิ่มเติม (เช่น 1.2 = เพิ่ม 20%)">
+                                        ตัวคูณค่าติดตั้ง <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i>
+                                    </label>
+                                    <input type="number" id="custom_installation_multiplier" name="custom_installation_multiplier" min="1.0" max="2.0" value="0.8" step="0.1">
+                                    <small>ค่าเริ่มต้น: 1.2 (เพิ่ม 20%)</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom_maintenance_rate" title="ค่าบำรุงรักษาต่อปี (% ของต้นทุน)">
+                                        ค่าบำรุงรักษา (%/ปี) <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i>
+                                    </label>
+                                    <input type="number" id="custom_maintenance_rate" name="custom_maintenance_rate" min="0" max="5" value="0.5" step="0.1">
+                                    <small>ค่าเริ่มต้น: 0.5% ต่อปี</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom_inflation_rate" title="อัตราเงินเฟ้อต่อปี (%)">
+                                        อัตราเงินเฟ้อ (%/ปี) <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i>
+                                    </label>
+                                    <input type="number" id="custom_inflation_rate" name="custom_inflation_rate" min="0" max="10" value="3.0" step="0.1">
+                                    <small>ค่าเริ่มต้น: 3% ต่อปี</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom_degradation_rate" title="อัตราเสื่อมสภาพของแผงต่อปี (%)">
+                                        อัตราเสื่อมสภาพ (%/ปี) <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i>
+                                    </label>
+                                    <input type="number" id="custom_degradation_rate" name="custom_degradation_rate" min="0" max="2" value="0.7" step="0.1">
+                                    <small>ค่าเริ่มต้น: 0.7% ต่อปี</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom_analysis_period" title="ระยะเวลาวิเคราะห์ (ปี)">
+                                        ระยะเวลาวิเคราะห์ (ปี) <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i>
+                                    </label>
+                                    <input type="number" id="custom_analysis_period" name="custom_analysis_period" min="5" max="30" value="5" step="1">
+                                    <small>ค่าเริ่มต้น: 5 ปี</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="custom_discount_rate" title="อัตราคิดลดสำหรับการคำนวณ ROI (%)">
+                                        อัตราคิดลด (%/ปี) <i class="fas fa-question-circle" style="color: #999; cursor: help;"></i>
+                                    </label>
+                                    <input type="number" id="custom_discount_rate" name="custom_discount_rate" min="0" max="10" value="5.0" step="0.5">
+                                    <small>ค่าเริ่มต้น: 5% ต่อปี</small>
+                                </div>
+                                <button type="button" id="btn-reset-settings" class="btn-secondary" style="width: 100%; margin-top: 10px;">
+                                    <i class="fas fa-undo"></i> รีเซ็ตเป็นค่าเริ่มต้น
+                                </button>
+                            </div>
+
+                        </div>
+
+                        <div class="form-group">
+                            <label for="system_size">
+                                ขนาดระบบ (kW) 
+                                <i class="fas fa-question-circle tooltip-icon" title="ขนาดระบบโซลาร์เซลล์ที่ต้องการติดตั้ง (kW) ขนาดทั่วไปสำหรับบ้าน: 3-10 kW, อาคาร: 10-300 kW"></i>
+                            </label>
+                            <div class="range-input">
+                                <input 
+                                    type="range" 
+                                    id="system_size_range" 
+                                    name="system_size_range" 
+                                    min="1" 
+                                    max="300" 
+                                    value="5"
+                                    step="0.5"
+                                >
+                                <input 
+                                    type="number" 
+                                    id="system_size" 
+                                    name="system_size" 
+                                    step="0.1" 
+                                    value="5"
+                                    placeholder="เช่น 5"
+                                    min="1"
+                                    max="300"
+                                    required
+                                >
+                            </div>
+                            <small class="validation-message" id="system_size-error"></small>
+                            <small>1-300 kW (ขนาดทั่วไป 3-10 kW บ้าน, 10-300 kW อาคาร) | กด Enter เพื่อคำนวณ</small>
+                        </div>
+
+                        <button type="submit" class="btn-calculate" id="btn-calculate-main">
+                            <i class="fas fa-calculator"></i> คำนวณ ROI
+                        </button>
+                        
+                        <!-- Success Message -->
+                        <div id="successMessage" class="success-message hidden" style="margin-top: 15px; padding: 12px; background: #d4edda; border: 1px solid #c3e6cb; border-radius: 6px; color: #155724;">
+                            <i class="fas fa-check-circle"></i> <span id="successText">คำนวณสำเร็จแล้ว!</span>
+                        </div>
+                    </form>
+
+                    <!-- Quick Location Buttons -->
+                    <div class="quick-locations">
+                        <h3>ตำแหน่งยอดนิยม:</h3>
+                        <button type="button" class="btn-location" data-lat="13.7563" data-lon="100.4925">
+                            <i class="fas fa-map-marker-alt"></i> กรุงเทพ
+                        </button>
+                        <button type="button" class="btn-location" data-lat="18.7883" data-lon="98.9853">
+                            <i class="fas fa-map-marker-alt"></i> เชียงใหม่
+                        </button>
+                        <button type="button" class="btn-location" data-lat="12.5692" data-lon="101.0901">
+                            <i class="fas fa-map-marker-alt"></i> ปัตตานี
+                        </button>
+                        <button type="button" class="btn-location" data-lat="14.8822" data-lon="104.8242">
+                            <i class="fas fa-map-marker-alt"></i> ขอนแก่น
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Map and Results -->
+            <div class="right-panel">
+                <!-- Map Card -->
+                <div class="map-card">
+                    <h2><i class="fas fa-map"></i> แผนที่ตำแหน่งของคุณ</h2>
+                    <div class="map-container">
+                        <div id="map"></div>
+                    </div>
+                    <div class="map-info">
+                        <p>คลิกบนแผนที่เพื่อเลือกตำแหน่ง หรือกรอกข้อมูล Latitude/Longitude</p>
+                    </div>
+                </div>
+
+                <!-- Image Prediction Card -->
+                <div class="map-card" style="margin-top: 20px;">
+                    <h2><i class="fas fa-compass"></i> ตรวจจับทิศหลังคา</h2>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                        ใช้โมเดล AI ตรวจจับทิศทางของหลังคา (East, North, South, West) แบบ Multi-Scale Segmentation
+                    </p>
+                    <button type="button" id="btn-predict-image" class="btn-calculate" style="width: 100%;">
+                        <i class="fas fa-search"></i> ตรวจจับทิศหลังคา
+                    </button>
+                    <div id="predictionLoading" class="hidden" style="text-align: center; padding: 20px;">
+                        <div class="spinner" style="margin: 0 auto;"></div>
+                        <p>กำลังทำนาย...</p>
+                    </div>
+                    <div id="predictionResult" style="margin-top: 15px; display: none;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <h4 style="margin-bottom: 10px;">รูปภาพต้นฉบับ</h4>
+                                <img id="originalImage" src="" alt="Original" style="width: 100%; border-radius: 6px; border: 2px solid #ddd;">
+                            </div>
+                            <div>
+                                <h4 style="margin-bottom: 10px;">ผลการตรวจจับทิศ (Overlay)</h4>
+                                <img id="overlayImage" src="" alt="Overlay" style="width: 100%; border-radius: 6px; border: 2px solid #ddd;">
+                            </div>
+                        </div>
+                        <div style="padding: 15px; background: #f5f5f5; border-radius: 6px;">
+                            <h4>สถิติทิศทางหลังคา:</h4>
+                            <div id="predictionContent"></div>
+                        </div>
+                        
+                        <!-- Solar Simulation GIF Section -->
+                        <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 6px;">
+                            <h4 style="margin-bottom: 10px;"><i class="fas fa-video"></i> สร้าง GIF Animation แสดงแสงอาทิตย์</h4>
+                            <div style="margin-bottom: 10px;">
+                                <label style="display: block; margin-bottom: 5px; font-size: 14px;">วันที่:</label>
+                                <input type="date" id="gifDate" value="2024-06-21" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                            </div>
+                            <div style="margin-bottom: 10px;">
+                                <label style="display: block; margin-bottom: 5px; font-size: 14px;">มุมเอียงหลังคา (องศา):</label>
+                                <input type="number" id="roofTilt" value="30" min="0" max="90" step="5" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd;">
+                            </div>
+                            <button type="button" id="btn-create-gif" class="btn-calculate" style="width: 100%; margin-top: 10px;">
+                                <i class="fas fa-film"></i> สร้าง GIF Animation
+                            </button>
+                            <div id="gifLoading" class="hidden" style="text-align: center; padding: 20px;">
+                                <div class="spinner" style="margin: 0 auto;"></div>
+                                <p>กำลังสร้าง GIF...</p>
+                            </div>
+                            <div id="gifResult" style="margin-top: 15px; display: none;">
+                                <h5>ผลลัพธ์:</h5>
+                                <div style="position: relative; width: 100%;">
+                                    <img id="gifImage" src="" alt="Solar Simulation GIF" style="width: 100%; border-radius: 6px; border: 2px solid #ddd; display: block;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Card -->
+                <div class="results-card hidden" id="resultsCard">
+                    <h2><i class="fas fa-chart-pie"></i> ผลการคำนวณ</h2>
+                    
+                    <!-- Key Metrics Summary -->
+                    <div class="key-metrics">
+                        <div class="metric-card primary clickable-formula" onclick="showFormula('roi')" title="คลิกเพื่อดูสูตร">
+                            <div class="metric-icon">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <div class="metric-content">
+                                <div class="metric-value" id="roi25Years">-</div>
+                                <div class="metric-label">ROI (5 ปี) <i class="fas fa-info-circle" style="font-size: 12px; opacity: 0.7;"></i></div>
+                                <div class="metric-unit">%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card success clickable-formula" onclick="showFormula('payback')" title="คลิกเพื่อดูสูตร">
+                            <div class="metric-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="metric-content">
+                                <div class="metric-value" id="paybackPeriod">-</div>
+                                <div class="metric-label">Payback Period <i class="fas fa-info-circle" style="font-size: 12px; opacity: 0.7;"></i></div>
+                                <div class="metric-unit">ปี</div>
+                            </div>
+                        </div>
+                        
+                        <div class="metric-card warning clickable-formula" onclick="showFormula('savings')" title="คลิกเพื่อดูสูตร">
+                            <div class="metric-icon">
+                                <i class="fas fa-piggy-bank"></i>
+                            </div>
+                            <div class="metric-content">
+                                <div class="metric-value" id="totalSavings">-</div>
+                                <div class="metric-label">เงินออมรวม (5 ปี) <i class="fas fa-info-circle" style="font-size: 12px; opacity: 0.7;"></i></div>
+                                <div class="metric-unit">บาท</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Results Grid -->
+                    <div class="results-grid">
+                        <div class="result-item clickable-formula" onclick="showFormula('capital')" title="คลิกเพื่อดูสูตร">
+                            <div class="result-icon">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <div class="result-content">
+                                <div class="result-label">ต้นทุนเงินทุน <i class="fas fa-info-circle" style="font-size: 11px; opacity: 0.6;"></i></div>
+                                <div class="result-value" id="capitalCost">-</div>
+                                <div class="result-unit">บาท</div>
+                            </div>
+                        </div>
+
+                        <div class="result-item clickable-formula" onclick="showFormula('costPerWatt')" title="คลิกเพื่อดูสูตร">
+                            <div class="result-icon">
+                                <i class="fas fa-calculator"></i>
+                            </div>
+                            <div class="result-content">
+                                <div class="result-label">ต้นทุนต่อวัตต์ <i class="fas fa-info-circle" style="font-size: 11px; opacity: 0.6;"></i></div>
+                                <div class="result-value" id="costPerWatt">-</div>
+                                <div class="result-unit">บาท/วัตต์</div>
+                            </div>
+                        </div>
+
+                        <div class="result-item clickable-formula" onclick="showFormula('battery')" title="คลิกเพื่อดูสูตร">
+                            <div class="result-icon">
+                                <i class="fas fa-battery-three-quarters"></i>
+                            </div>
+                            <div class="result-content">
+                                <div class="result-label">ต้นทุนแบตเตอรี่ <i class="fas fa-info-circle" style="font-size: 11px; opacity: 0.6;"></i></div>
+                                <div class="result-value" id="batteryCost">-</div>
+                                <div class="result-unit">บาท</div>
+                            </div>
+                        </div>
+
+                        <div class="result-item clickable-formula" onclick="showFormula('production')" title="คลิกเพื่อดูสูตร">
+                            <div class="result-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <div class="result-content">
+                                <div class="result-label">การผลิตต่อปี <i class="fas fa-info-circle" style="font-size: 11px; opacity: 0.6;"></i></div>
+                                <div class="result-value" id="annualProduction">-</div>
+                                <div class="result-unit">kWh</div>
+                            </div>
+                        </div>
+
+                        <div class="result-item clickable-formula" onclick="showFormula('revenue')" title="คลิกเพื่อดูสูตร">
+                            <div class="result-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="result-content">
+                                <div class="result-label">รายได้ต่อปี <i class="fas fa-info-circle" style="font-size: 11px; opacity: 0.6;"></i></div>
+                                <div class="result-value" id="annualRevenue">-</div>
+                                <div class="result-unit">บาท</div>
+                            </div>
+                        </div>
+
+                        <div class="result-item clickable-formula" onclick="showFormula('ghi')" title="คลิกเพื่อดูสูตร">
+                            <div class="result-icon">
+                                <i class="fas fa-sun"></i>
+                            </div>
+                            <div class="result-content">
+                                <div class="result-label">แสงอาทิตย์เฉลี่ย <i class="fas fa-info-circle" style="font-size: 11px; opacity: 0.6;"></i></div>
+                                <div class="result-value" id="dailyGHI">-</div>
+                                <div class="result-unit">kWh/m²/วัน</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Performance Indicators -->
+                    <div class="performance-section">
+                        <h3><i class="fas fa-tachometer-alt"></i> ตัวชี้วัดประสิทธิภาพ</h3>
+                        <div class="performance-grid">
+                            <div class="performance-item clickable-formula" onclick="showFormula('co2')" title="คลิกเพื่อดูสูตร">
+                                <div class="performance-icon">
+                                    <i class="fas fa-leaf"></i>
+                                </div>
+                                <div class="performance-content">
+                                    <div class="performance-value" id="co2Reduction">-</div>
+                                    <div class="performance-label">CO₂ ลดลง (ตัน/ปี) <i class="fas fa-info-circle" style="font-size: 11px; opacity: 0.6;"></i></div>
+                                </div>
+                            </div>
+                            <div class="performance-item clickable-formula" onclick="showFormula('trees')" title="คลิกเพื่อดูสูตร">
+                                <div class="performance-icon">
+                                    <i class="fas fa-tree"></i>
+                                </div>
+                                <div class="performance-content">
+                                    <div class="performance-value" id="treesEquivalent">-</div>
+                                    <div class="performance-label">เทียบเท่าปลูกต้นไม้ (ต้น) <i class="fas fa-info-circle" style="font-size: 11px; opacity: 0.6;"></i></div>
+                                </div>
+                            </div>
+                            <div class="performance-item clickable-formula" onclick="showFormula('homes')" title="คลิกเพื่อดูสูตร">
+                                <div class="performance-icon">
+                                    <i class="fas fa-home"></i>
+                                </div>
+                                <div class="performance-content">
+                                    <div class="performance-value" id="homesPowered">-</div>
+                                    <div class="performance-label">เพียงพอสำหรับบ้าน (หลัง) <i class="fas fa-info-circle" style="font-size: 11px; opacity: 0.6;"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Calculation Formulas Section -->
+                    <div class="formulas-section" style="margin-top: 30px; padding: 20px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 12px; border: 1px solid #dee2e6;">
+                        <h3 style="margin-bottom: 20px; color: #0066cc; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-square-root-alt"></i> สูตรการคำนวณ
+                        </h3>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+                            <!-- Capital Cost Formula -->
+                            <div class="formula-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 14px;">
+                                    <i class="fas fa-money-bill-wave" style="color: #28a745;"></i> ต้นทุนเงินทุน (Capital Cost)
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #495057;">
+                                    Capital Cost = ขนาดระบบ (kW) × ราคาแผง/kW × ตัวคูณติดตั้ง
+                                </div>
+                                <small style="color: #6c757d; display: block; margin-top: 8px;">
+                                    ค่าเริ่มต้น: 30,000 บาท/kW × 0.8 = 24,000 บาท/kW
+                                </small>
+                            </div>
+
+                            <!-- Annual Production Formula -->
+                            <div class="formula-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 14px;">
+                                    <i class="fas fa-bolt" style="color: #ffc107;"></i> การผลิตต่อปี (Annual Production)
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #495057;">
+                                    Production = POA × Cloud Factor × System Loss × ขนาดระบบ
+                                </div>
+                                <small style="color: #6c757d; display: block; margin-top: 8px;">
+                                    POA = Plane of Array Irradiance (pvlib), System Loss = 85%
+                                </small>
+                            </div>
+
+                            <!-- Annual Revenue Formula -->
+                            <div class="formula-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 14px;">
+                                    <i class="fas fa-chart-line" style="color: #17a2b8;"></i> รายได้ต่อปี (Annual Revenue)
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #495057;">
+                                    Revenue = การผลิตต่อปี (kWh) × ราคาไฟฟ้า (บาท/kWh)
+                                </div>
+                                <small style="color: #6c757d; display: block; margin-top: 8px;">
+                                    ราคาไฟฟ้าเริ่มต้น: 4.50 บาท/kWh (ปรับได้ตามจริง)
+                                </small>
+                            </div>
+
+                            <!-- Yearly Profit Formula -->
+                            <div class="formula-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 14px;">
+                                    <i class="fas fa-coins" style="color: #fd7e14;"></i> กำไรสุทธิรายปี (Yearly Profit)
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #495057;">
+                                    Profit = (Revenue × Degradation) - (Maintenance × Inflation)
+                                </div>
+                                <small style="color: #6c757d; display: block; margin-top: 8px;">
+                                    Degradation = 0.7%/ปี, Maintenance = 0.5%/ปี, Inflation = 3%/ปี
+                                </small>
+                            </div>
+
+                            <!-- ROI Formula -->
+                            <div class="formula-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 14px;">
+                                    <i class="fas fa-percentage" style="color: #0066cc;"></i> ROI (Return on Investment)
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #495057;">
+                                    ROI = (กำไรสะสม / ต้นทุนเงินทุน) × 100%
+                                </div>
+                                <small style="color: #6c757d; display: block; margin-top: 8px;">
+                                    กำไรสะสม = ผลรวมกำไรสุทธิทุกปี (ไม่รวมต้นทุน)
+                                </small>
+                            </div>
+
+                            <!-- Payback Period Formula -->
+                            <div class="formula-card" style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+                                <h4 style="color: #333; margin-bottom: 10px; font-size: 14px;">
+                                    <i class="fas fa-clock" style="color: #28a745;"></i> Payback Period (ระยะคืนทุน)
+                                </h4>
+                                <div style="background: #f8f9fa; padding: 12px; border-radius: 6px; font-family: 'Courier New', monospace; font-size: 13px; color: #495057;">
+                                    Payback = ปีที่กำไรสะสม ≥ ต้นทุนเงินทุน
+                                </div>
+                                <small style="color: #6c757d; display: block; margin-top: 8px;">
+                                    คำนวณจากกำไรสะสมจริง (ไม่ใช้ Discounted)
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Additional Info -->
+                        <div style="margin-top: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #0066cc;">
+                            <h4 style="color: #0066cc; margin-bottom: 10px; font-size: 14px;">
+                                <i class="fas fa-info-circle"></i> หมายเหตุ
+                            </h4>
+                            <ul style="margin: 0; padding-left: 20px; color: #495057; font-size: 13px; line-height: 1.8;">
+                                <li><strong>POA (Plane of Array)</strong>: คำนวณจาก pvlib โดยใช้ข้อมูล GHI, DNI, DHI จาก Clearsky Model</li>
+                                <li><strong>Cloud Factor</strong>: ใส = 85%, เมฆบางส่วน = 70%, เมฆมาก = 50%</li>
+                                <li><strong>System Loss</strong>: รวม Inverter Loss, Cable Loss, Soiling = 15%</li>
+                                <li><strong>Degradation</strong>: แผงเสื่อมสภาพ 0.7% ต่อปี (เริ่มปีที่ 2)</li>
+                                <li><strong>Discount Rate</strong>: 5% ต่อปี สำหรับคำนวณ NPV</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div class="charts-section">
+                        <div class="chart-tabs">
+                            <button class="chart-tab active" data-chart="profit">📈 25-Year Projection</button>
+                            <button class="chart-tab" data-chart="production">การผลิตรายปี</button>
+                            <button class="chart-tab" data-chart="sunpath">เส้นทางดวงอาทิตย์</button>
+                        </div>
+                        <div class="chart-content">
+                            <div class="chart-panel active" id="profitChartPanel">
+                                <canvas id="profitChart" width="400" height="200"></canvas>
+                            </div>
+                            <div class="chart-panel" id="productionChartPanel">
+                                <canvas id="productionChart" width="400" height="200"></canvas>
+                            </div>
+                            <div class="chart-panel" id="sunpathChartPanel">
+                                <svg id="sunPathDiagram" width="100%" height="400"></svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detailed Analysis -->
+                    <div class="analysis-section">
+                        <h3><i class="fas fa-chart-line"></i> การวิเคราะห์รายละเอียด</h3>
+                        <div class="yearly-table-wrapper">
+                            <div class="yearly-table-title">ตารางผลประกอบการรายปี</div>
+                            <table class="yearly-table">
+                                <thead>
+                                    <tr>
+                                        <th>ปี</th>
+                                        <th>การผลิต (kWh)</th>
+                                        <th>รายได้ (บาท)</th>
+                                        <th>บำรุงรักษา (บาท)</th>
+                                        <th>กำไรสุทธิ (บาท)</th>
+                                        <th>กำไรสะสม (บาท)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="yearlyTableBody">
+                                    <!-- Data will be populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Export Options -->
+                    <div class="export-section">
+                        <h3><i class="fas fa-download"></i> ส่งออกรายงาน</h3>
+                        <div class="export-buttons">
+                            <button class="btn-export" id="btn-export-pdf">
+                                <i class="fas fa-file-pdf"></i> ส่งออก PDF
+                            </button>
+                            <button class="btn-export" id="btn-export-excel">
+                                <i class="fas fa-file-excel"></i> ส่งออก Excel
+                            </button>
+                            <button class="btn-export" id="btn-print">
+                                <i class="fas fa-print"></i> พิมพ์รายงาน
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Solar Information -->
+                    <div class="solar-info">
+                        <h3><i class="fas fa-sun"></i> ข้อมูลแสงอาทิตย์</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">แสงอาทิตย์เฉลี่ย</span>
+                                <span class="value" id="ghiDaily">-</span>
+                                <span class="unit">kWh/m²/วัน</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">แสงอาทิตย์ต่อปี</span>
+                                <span class="value" id="ghiAnnual">-</span>
+                                <span class="unit">kWh/m²/ปี</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">ประสิทธิภาพระบบ</span>
+                                <span class="value">85</span>
+                                <span class="unit">%</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">อายุการใช้งาน</span>
+                                <span class="value">25</span>
+                                <span class="unit">ปี</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Financing Summary (if applicable) -->
+                    <div class="financing-summary hidden" id="financingSummary">
+                        <h3><i class="fas fa-credit-card"></i> สรุปการผ่อนชำระ</h3>
+                        <div class="financing-grid">
+                            <div class="fin-item">
+                                <div class="label">ผ่อนต่อเดือน</div>
+                                <div class="value" id="monthlyPayment">-</div>
+                                <div class="unit">บาท</div>
+                            </div>
+                            <div class="fin-item">
+                                <div class="label">ระยะเวลา</div>
+                                <div class="value" id="loanYears">-</div>
+                                <div class="unit">ปี</div>
+                            </div>
+                            <div class="fin-item">
+                                <div class="label">ดอกเบี้ยรวม</div>
+                                <div class="value" id="totalInterest">-</div>
+                                <div class="unit">บาท</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Loading Progress -->
+                    <div class="loading-progress hidden" id="loadingProgress">
+                        <div class="progress-container">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">กำลังคำนวณ... 0%</div>
+                    </div>
+
+                    <!-- Error Message -->
+                    <div class="error-message hidden" id="errorMessage">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span id="errorText">เกิดข้อผิดพลาด</span>
+                    </div>
+                    <div class="solar-info">
+                        <h3>ข้อมูลรังสีอาทิตย์</h3>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <span class="label">GHI ต่อวัน (เฉลี่ย):</span>
+                                <span class="value" id="ghiDaily">-</span>
+                                <span class="unit">kWh/m²/วัน</span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">GHI ต่อปี:</span>
+                                <span class="value" id="ghiAnnual">-</span>
+                                <span class="unit">kWh/m²/ปี</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Section -->
+                    <div class="comparison-section hidden" id="comparisonSection" style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                        <h3><i class="fas fa-balance-scale"></i> เปรียบเทียบหลายระบบ</h3>
+                        <div id="comparisonTable" style="overflow-x: auto;">
+                            <table class="yearly-table" style="margin-top: 15px;">
+                                <thead>
+                                    <tr>
+                                        <th>ขนาดระบบ</th>
+                                        <th class="num">ต้นทุน</th>
+                                        <th class="num">การผลิต/ปี</th>
+                                        <th class="num">รายได้/ปี</th>
+                                        <th class="num">Payback</th>
+                                        <th class="num">ROI (5 ปี)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="comparisonTableBody">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Financing Summary -->
+                    <div class="financing-summary hidden" id="financingSummary">
+                        <h3>สรุปการผ่อนชำระ</h3>
+                        <div class="financing-grid">
+                            <div class="fin-item">
+                                <span class="label">ค่างวดต่อเดือน</span>
+                                <span class="value" id="monthlyPayment">-</span>
+                                <span class="unit">บาท/เดือน</span>
+                            </div>
+                            <div class="fin-item">
+                                <span class="label">ระยะเวลากู้</span>
+                                <span class="value" id="loanYears">-</span>
+                                <span class="unit">ปี</span>
+                            </div>
+                            <div class="fin-item">
+                                <span class="label">ดอกเบี้ยรวมตลอดสัญญา</span>
+                                <span class="value" id="totalInterest">-</span>
+                                <span class="unit">บาท</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Loading Progress -->
+                <div class="loading-progress hidden" id="loadingProgress">
+                    <div class="progress-container" style="background: #f0f0f0; border-radius: 10px; padding: 20px; text-align: center;">
+                        <div style="background: #e0e0e0; border-radius: 10px; height: 30px; margin-bottom: 10px; overflow: hidden; position: relative;">
+                            <div id="progressBar" style="background: linear-gradient(90deg, #0066cc, #00aaff); height: 100%; width: 0%; transition: width 0.3s ease; border-radius: 10px;"></div>
+                        </div>
+                        <p class="progress-text" id="progressText" style="margin: 0; color: #666; font-weight: 500;">กำลังคำนวณ... 0%</p>
+                    </div>
+                </div>
+
+                <!-- Error Message -->
+                <div class="error-message hidden" id="errorMessage">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <p id="errorText"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>📍 ที่อยู่</h3>
+                    <p>โรงเรียนสุรธรรมพิทักษ์<br>
+                    W36C+36M, Pru Yai, Mueang Nakhon Ratchasima District<br>
+                    Nakhon Ratchasima 30000</p>
+                </div>
+                <div class="footer-section">
+                    <h3>ℹ️ เกี่ยวกับ</h3>
+                    <p>SOLAR ATLAS AI v1.0<br>
+                    © 2025 โรงเรียนสุรธรรมพิทักษ์<br>
+                    ข้อมูลเพื่อการศึกษา</p>
+                </div>
+                <div class="footer-section">
+                    <h3>📖 เอกสาร</h3>
+                    <p>README.md | GUIDE_TH.md<br>
+                    INSTALL.md | API.md<br>
+                    CHANGELOG.md</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>สร้างด้วยความรักสำหรับพลังงานสะอาด ☀️</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    <!-- Floating Assistant: ครูบอล (ตัวละคร + กล่องคำพูดเหนือหัว) -->
+    <div class="assistant-widget" id="assistantWidget">
+        <button class="assistant-toggle" id="assistantToggle" aria-label="เปิด/ปิดผู้ช่วยครูบอล">
+            <i class="fas fa-user-graduate"></i>
+        </button>
+        <div class="assistant-panel hidden" id="assistantPanel">
+            <div class="assistant-bubble">
+                <div class="assistant-messages" id="assistantMessages">
+                    <div class="assistant-message assistant-message--bot">
+                        <div class="bubble">
+                            สวัสดีครับ ผมครูบอล 😊<br>
+                            ลองบอกผมหน่อยว่าบ้านคุณใช้ไฟประมาณกี่หน่วยต่อเดือน หรือต้องการติดระบบกี่ kW ผมจะช่วยแนะนำให้ครับ
+                        </div>
+                    </div>
+                </div>
+                <div class="assistant-footer">
+                    <input type="text" id="assistantInput" placeholder="พิมพ์คำถามเรื่องโซล่าเซลล์...">
+                    <button id="assistantSend"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+            <div class="assistant-character">
+                <div class="assistant-avatar">
+                    <img src="{{ url_for('serve_ball') }}" alt="ครูบอล">
+                </div>
+                <div class="assistant-name">ครูบอล</div>
+                <div class="assistant-role">ผู้ช่วยวางแผนติดตั้งโซล่าเซลล์</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Leaflet initialization inline -->
+    <script>
+        let map;
+        let marker;
+        
+        function initMap() {
+            console.log('Initializing map...');
+            
+            const mapContainer = document.getElementById('map');
+            if (!mapContainer) {
+                console.error('Map container not found');
+                return;
+            }
+            
+            
+            try {
+                // สร้าง map - โรงเรียนสุรธรรมพิทักษ์ (โคราช)
+                map = L.map('map').setView([14.909999243404515, 102.07143026893837], 18);
+                
+                // เพิ่ม tile layer (ดาวเทียม)
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    maxZoom: 18,
+                    attribution: 'Tiles &copy; Esri'
+                }).addTo(map);
+                
+                // เพิ่ม marker
+                marker = L.marker([14.909999243404515, 102.07143026893837], {
+                    draggable: true
+                }).addTo(map);
+                
+                marker.bindPopup('โรงเรียนสุรธรรมพิทักษ์<br>Lat: 14.909999243404515<br>Lng: 102.07143026893837');
+                marker.openPopup();
+                
+                // Event: ลาก marker
+                marker.on('dragend', function() {
+                    const pos = marker.getLatLng();
+                    document.getElementById('latitude').value = pos.lat.toFixed(4);
+                    document.getElementById('longitude').value = pos.lng.toFixed(4);
+                    marker.setPopupContent(`Lat: ${pos.lat.toFixed(4)}<br>Lng: ${pos.lng.toFixed(4)}`);
+                });
+                
+                // Event: คลิกแผนที่
+                map.on('click', function(e) {
+                    marker.setLatLng(e.latlng);
+                    document.getElementById('latitude').value = e.latlng.lat.toFixed(4);
+                    document.getElementById('longitude').value = e.latlng.lng.toFixed(4);
+                    marker.setPopupContent(`Lat: ${e.latlng.lat.toFixed(4)}<br>Lng: ${e.latlng.lng.toFixed(4)}`);
+                    marker.openPopup();
+                });
+                
+                // Event: เปลี่ยน input
+                document.getElementById('latitude').addEventListener('change', function() {
+                    const lat = parseFloat(this.value);
+                    const lng = parseFloat(document.getElementById('longitude').value);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        marker.setLatLng([lat, lng]);
+                        map.setView([lat, lng], 15);
+                        marker.setPopupContent(`Lat: ${lat.toFixed(4)}<br>Lng: ${lng.toFixed(4)}`);
+                        marker.openPopup();
+                    }
+                });
+                
+                document.getElementById('longitude').addEventListener('change', function() {
+                    const lat = parseFloat(document.getElementById('latitude').value);
+                    const lng = parseFloat(this.value);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        marker.setLatLng([lat, lng]);
+                        map.setView([lat, lng], 15);
+                        marker.setPopupContent(`Lat: ${lat.toFixed(4)}<br>Lng: ${lng.toFixed(4)}`);
+                        marker.openPopup();
+                    }
+                });
+                
+                console.log('Map initialized successfully');
+                
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        
+        // เรียก initMap เมื่อ page โหลดเสร็จ
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initMap);
+        } else {
+            initMap();
+        }
+    </script>
+
+
+
+    <!-- Formula Modal -->
+    <div id="formulaModal" class="formula-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 10000;">
+        <div class="formula-modal-content" style="background: white; border-radius: 16px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalSlideIn 0.3s ease; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+            <div class="formula-modal-header" style="padding: 20px 25px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                <h3 id="formulaTitle" style="margin: 0; color: #0066cc; font-size: 18px;"><i class="fas fa-square-root-alt"></i> สูตรการคำนวณ</h3>
+                <button onclick="closeFormulaModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999; padding: 0; line-height: 1;">&times;</button>
+            </div>
+            <div class="formula-modal-body" style="padding: 25px;">
+                <div id="formulaContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: scale(0.9) translateY(-20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .clickable-formula {
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .clickable-formula:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 102, 204, 0.2);
+        }
+        .formula-box {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            color: #333;
+            margin: 15px 0;
+            border-left: 4px solid #0066cc;
+        }
+        .formula-example {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .formula-example h4 {
+            margin: 0 0 10px 0;
+            color: #0066cc;
+            font-size: 14px;
+        }
+        .formula-example p {
+            margin: 5px 0;
+            font-size: 13px;
+            color: #495057;
+        }
+        .formula-note {
+            background: #fff3cd;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #856404;
+        }
+    </style>
+
+    <script>
+        // Formula definitions
+        const formulas = {
+            roi: {
+                title: '<i class="fas fa-percentage"></i> ROI (Return on Investment)',
+                formula: 'ROI = (กำไรสะสม ÷ ต้นทุนเงินทุน) × 100%',
+                description: 'ROI คือ อัตราผลตอบแทนจากการลงทุน แสดงเป็นเปอร์เซ็นต์ของกำไรที่ได้รับเทียบกับเงินลงทุนเริ่มต้น',
+                example: 'ถ้าลงทุน 150,000 บาท และได้กำไรสะสม 5 ปี = 234,930 บาท<br>ROI = (234,930 ÷ 150,000) × 100 = <strong>156.62%</strong>',
+                note: 'กำไรสะสมคำนวณจากผลรวมกำไรสุทธิทุกปี (รายได้ - ค่าบำรุงรักษา)'
+            },
+            payback: {
+                title: '<i class="fas fa-clock"></i> Payback Period (ระยะคืนทุน)',
+                formula: 'Payback = ปีที่กำไรสะสม ≥ ต้นทุนเงินทุน',
+                description: 'ระยะเวลาที่ใช้ในการคืนทุน คือปีที่กำไรสะสมมากกว่าหรือเท่ากับเงินลงทุนเริ่มต้น',
+                example: 'ถ้าลงทุน 150,000 บาท และกำไรสะสมปีที่ 4 = 160,000 บาท<br>Payback Period = <strong>4 ปี</strong>',
+                note: 'คำนวณจากกำไรสะสมจริง (Undiscounted) ไม่ใช่ค่าปัจจุบัน'
+            },
+            savings: {
+                title: '<i class="fas fa-piggy-bank"></i> เงินออมรวม (Total Savings)',
+                formula: 'เงินออมรวม = Σ (กำไรสุทธิรายปี ÷ (1 + อัตราคิดลด)^ปี)',
+                description: 'ผลรวมของกำไรสุทธิทุกปีที่ปรับด้วยอัตราคิดลด (Discounted Cash Flow)',
+                example: 'กำไรปีที่ 1 = 50,000 บาท, อัตราคิดลด = 5%<br>มูลค่าปัจจุบัน = 50,000 ÷ 1.05 = <strong>47,619 บาท</strong>',
+                note: 'อัตราคิดลดเริ่มต้น 5% ต่อปี (ปรับได้ในตัวเลือกขั้นสูง)'
+            },
+            capital: {
+                title: '<i class="fas fa-money-bill-wave"></i> ต้นทุนเงินทุน (Capital Cost)',
+                formula: 'Capital Cost = ขนาดระบบ (kW) × ราคาแผง/kW × ตัวคูณติดตั้ง',
+                description: 'ต้นทุนรวมในการติดตั้งระบบโซลาร์เซลล์ รวมค่าแผง อินเวอร์เตอร์ และค่าติดตั้ง',
+                example: 'ขนาด 5 kW × 30,000 บาท/kW × 0.8 = <strong>120,000 บาท</strong>',
+                note: 'ตัวคูณติดตั้งเริ่มต้น 0.8 (รวมค่าติดตั้ง อินเวอร์เตอร์ สายไฟ)'
+            },
+            costPerWatt: {
+                title: '<i class="fas fa-calculator"></i> ต้นทุนต่อวัตต์',
+                formula: 'ต้นทุนต่อวัตต์ = ต้นทุนเงินทุน ÷ (ขนาดระบบ × 1000)',
+                description: 'ต้นทุนเฉลี่ยต่อวัตต์ของระบบ ใช้เปรียบเทียบราคากับผู้ติดตั้งรายอื่น',
+                example: 'ต้นทุน 120,000 บาท ÷ 5,000 วัตต์ = <strong>24 บาท/วัตต์</strong>',
+                note: 'ราคาตลาดปัจจุบัน: 20-35 บาท/วัตต์ (ขึ้นอยู่กับคุณภาพและยี่ห้อ)'
+            },
+            battery: {
+                title: '<i class="fas fa-battery-three-quarters"></i> ต้นทุนแบตเตอรี่',
+                formula: 'ต้นทุนแบตเตอรี่ = ความจุ (kWh) × ราคา/kWh',
+                description: 'ต้นทุนระบบกักเก็บพลังงาน (ถ้าเลือกติดตั้ง)',
+                example: 'ความจุ 10 kWh × 10,000 บาท/kWh = <strong>100,000 บาท</strong>',
+                note: 'แบตเตอรี่ LiFePO4 ราคาประมาณ 8,000-12,000 บาท/kWh'
+            },
+            production: {
+                title: '<i class="fas fa-bolt"></i> การผลิตต่อปี (Annual Production)',
+                formula: 'Production = POA × Cloud Factor × System Loss × ขนาดระบบ',
+                description: 'ปริมาณไฟฟ้าที่ระบบผลิตได้ต่อปี คำนวณจากข้อมูลแสงอาทิตย์และประสิทธิภาพระบบ',
+                example: 'POA = 1,800 kWh/m²/ปี × 0.70 × 0.85 × 5 kW = <strong>5,355 kWh/ปี</strong>',
+                note: 'POA = Plane of Array Irradiance (คำนวณจาก pvlib)<br>Cloud Factor: ใส=85%, เมฆบางส่วน=70%, เมฆมาก=50%<br>System Loss = 85% (รวม Inverter, Cable, Soiling)'
+            },
+            revenue: {
+                title: '<i class="fas fa-chart-line"></i> รายได้ต่อปี (Annual Revenue)',
+                formula: 'Revenue = การผลิตต่อปี (kWh) × ราคาไฟฟ้า (บาท/kWh)',
+                description: 'มูลค่าไฟฟ้าที่ประหยัดได้ต่อปี คำนวณจากปริมาณผลิตคูณราคาไฟฟ้า',
+                example: 'ผลิต 5,355 kWh × 4.50 บาท/kWh = <strong>24,098 บาท/ปี</strong>',
+                note: 'ราคาไฟฟ้าเฉลี่ยในไทย: 4.00-5.50 บาท/kWh (ขึ้นอยู่กับประเภทผู้ใช้)'
+            },
+            ghi: {
+                title: '<i class="fas fa-sun"></i> แสงอาทิตย์เฉลี่ย (GHI)',
+                formula: 'GHI = Global Horizontal Irradiance (kWh/m²/วัน)',
+                description: 'ปริมาณพลังงานแสงอาทิตย์ที่ตกกระทบพื้นผิวแนวราบต่อวัน คำนวณจาก pvlib Clearsky Model',
+                example: 'ประเทศไทยเฉลี่ย: <strong>4.5-5.5 kWh/m²/วัน</strong>',
+                note: 'ค่า GHI สูง = ศักยภาพการผลิตไฟฟ้าสูง<br>ภาคอีสานและภาคกลางมี GHI สูงที่สุดในไทย'
+            },
+            co2: {
+                title: '<i class="fas fa-leaf"></i> CO₂ ลดลง (Carbon Reduction)',
+                formula: 'CO₂ ลดลง = การผลิตต่อปี (kWh) × 0.5 ÷ 1000',
+                description: 'ปริมาณก๊าซคาร์บอนไดออกไซด์ที่ลดลงจากการใช้พลังงานแสงอาทิตย์แทนไฟฟ้าจากโรงไฟฟ้า',
+                example: 'ผลิต 460,000 kWh/ปี × 0.5 kg/kWh ÷ 1000 = <strong>230 ตัน CO₂/ปี</strong>',
+                note: 'ค่า Emission Factor ของไทย: ~0.5 kg CO₂/kWh<br>อ้างอิงจาก Thailand Grid Emission Factor (TGO)'
+            },
+            trees: {
+                title: '<i class="fas fa-tree"></i> เทียบเท่าปลูกต้นไม้',
+                formula: 'จำนวนต้นไม้ = CO₂ ลดลง (kg) ÷ 22',
+                description: 'จำนวนต้นไม้ที่ต้องปลูกเพื่อดูดซับ CO₂ ในปริมาณเท่ากัน (ต้นไม้ 1 ต้นดูดซับ ~22 kg CO₂/ปี)',
+                example: 'CO₂ ลดลง 230,000 kg ÷ 22 kg/ต้น = <strong>10,454 ต้น</strong>',
+                note: 'ต้นไม้โตเต็มที่ดูดซับ CO₂ ประมาณ 20-25 kg/ปี<br>ใช้ค่าเฉลี่ย 22 kg/ต้น/ปี'
+            },
+            homes: {
+                title: '<i class="fas fa-home"></i> เพียงพอสำหรับบ้าน',
+                formula: 'จำนวนบ้าน = การผลิตต่อปี (kWh) ÷ 2,500',
+                description: 'จำนวนบ้านที่สามารถใช้ไฟฟ้าได้จากพลังงานที่ผลิตได้ (บ้านเฉลี่ยใช้ ~2,500 kWh/ปี)',
+                example: 'ผลิต 460,000 kWh/ปี ÷ 2,500 kWh/บ้าน = <strong>184 หลัง</strong>',
+                note: 'บ้านในไทยใช้ไฟฟ้าเฉลี่ย 200-300 kWh/เดือน<br>หรือประมาณ 2,400-3,600 kWh/ปี'
+            }
+        };
+
+        function showFormula(type) {
+            const formula = formulas[type];
+            if (!formula) return;
+
+            document.getElementById('formulaTitle').innerHTML = formula.title;
+            
+            let content = `
+                <p style="color: #666; margin-bottom: 15px;">${formula.description}</p>
+                <div class="formula-box">
+                    <strong>สูตร:</strong><br>
+                    ${formula.formula}
+                </div>
+                <div class="formula-example">
+                    <h4><i class="fas fa-lightbulb"></i> ตัวอย่างการคำนวณ</h4>
+                    <p>${formula.example}</p>
+                </div>
+                <div class="formula-note">
+                    <i class="fas fa-info-circle"></i> <strong>หมายเหตุ:</strong><br>
+                    ${formula.note}
+                </div>
+            `;
+            
+            document.getElementById('formulaContent').innerHTML = content;
+            document.getElementById('formulaModal').style.display = 'block';
+        }
+
+        function closeFormulaModal() {
+            document.getElementById('formulaModal').style.display = 'none';
+        }
+
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Close modal when clicking outside
+            var modal = document.getElementById('formulaModal');
+            if (modal) {
+                modal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeFormulaModal();
+                    }
+                });
+            }
+        });
+
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeFormulaModal();
+            }
+        });
+    </script>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/map.js') }}"></script>
+</body>
+</html>
