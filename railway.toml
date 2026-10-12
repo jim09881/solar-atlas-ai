@@ -1,8 +1,4 @@
-[build]
-builder = "nixpacks"
-buildCommand = "pip install -r solar_roi_app/requirements.txt"
-
 [deploy]
-startCommand = "cd solar_roi_app && python app.py"
+startCommand = "python app.py"
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
